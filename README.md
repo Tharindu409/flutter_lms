@@ -18,11 +18,9 @@ The app connects to a Dockerized backend API (integration starts on Day 4).
 
 cd flutter_lms
 
-2. Install dependencies:
-   flutter pub get
+2. Install dependencies: flutter pub get
 
-3. Start an Android emulator, then run the app:     
-   flutter run
+3. Start an Android emulator, then run the app: flutter run
 
 
 ## Project Status
@@ -48,7 +46,3 @@ cd flutter_lms
 - Built the shared Login UI (email, password with show/hide toggle, login button)
 - Created the GitHub repository and README
 
-## Commit Convention
-
-This project follows Conventional Commits, for example:
-`feat(auth): add login screen ui`, `docs: update README`, `fix(ui): fix button alignment`.
