@@ -38,9 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   @override
-
   Widget build(BuildContext context) {
-
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -58,10 +56,37 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 8),
                 const Text('Login to continue'),
                 const SizedBox(height: 32),
-                 
 
+                TextField(
+                  controller: _emailController,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: const InputDecoration(
+                    labelText: 'Email',
+                    prefixIcon: Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
                 const SizedBox(height: 16),
-                 
+
+                TextField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  decoration: InputDecoration(
+                    labelText: 'Password',
+                    prefixIcon: const Icon(Icons.lock_outline),
+                    border: const OutlineInputBorder(),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() => _obscurePassword = !_obscurePassword);
+                      },
+                    ),
+                  ),
+                ),
 
                 const SizedBox(height: 24),
                 SizedBox(
@@ -71,7 +96,6 @@ class _LoginScreenState extends State<LoginScreen> {
                     onPressed: () {},
                     child: const Text('Login'),
                   ),
-
                 ),
               ],
             ),
