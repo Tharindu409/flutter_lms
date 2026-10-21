@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../shared/widgets/section_header.dart';
-import '../dashboard/data/dummy_dashboard_data.dart';
-import '../dashboard/widgets/dashboard_widgets.dart';
+import 'package:flutter_lms/services/dummy_dashboard_data.dart';
+import 'package:flutter_lms/widgets/dashboard_widgets.dart';
+import 'package:flutter_lms/widgets/section_header.dart';
 
 class InstructorDashboard extends StatelessWidget {
   const InstructorDashboard({super.key});
@@ -33,8 +33,9 @@ class InstructorDashboard extends StatelessWidget {
         const SizedBox(height: 24),
         const SectionHeader(title: 'Recent activity'),
         const SizedBox(height: 12),
-        ...DummyDashboardData.instructorActivity
-            .map((a) => ActivityTile(item: a)),
+        ...DummyDashboardData.instructorActivity.map(
+          (a) => ActivityTile(item: a),
+        ),
       ],
     );
   }

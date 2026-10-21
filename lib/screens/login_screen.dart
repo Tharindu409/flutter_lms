@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../core/routes/app_routes.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/app_text_field.dart';
-import '../../shared/widgets/message_banner.dart';
-import '../../shared/widgets/section_header.dart';
+import 'package:flutter_lms/utils/app_routes.dart';
+import 'package:flutter_lms/utils/app_theme.dart';
+import 'package:flutter_lms/utils/validators.dart';
+import 'package:flutter_lms/widgets/app_text_field.dart';
+import 'package:flutter_lms/widgets/message_banner.dart';
+import 'package:flutter_lms/widgets/section_header.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -35,23 +36,6 @@ class _LoginScreenState extends State<LoginScreen> {
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? '';
-    if (email.isEmpty) return 'Email is required';
-    final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!regex.hasMatch(email)) return 'Enter a valid email address';
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    final password = value ?? '';
-    if (password.isEmpty) return 'Password is required';
-    if (password.length < 8) {
-      return 'Password must be at least 8 characters';
-    }
-    return null;
   }
 
   void _submit() {
@@ -124,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         icon: Icons.email_outlined,
                                         keyboardType:
                                             TextInputType.emailAddress,
-                                        validator: _validateEmail,
+                                        validator: Validators.email,
                                       ),
                                       const SizedBox(height: 16),
                                       AppTextField(
@@ -132,7 +116,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         label: 'Password',
                                         icon: Icons.lock_outline,
                                         obscureText: _obscurePassword,
-                                        validator: _validatePassword,
+                                        validator: Validators.password,
                                         suffix: IconButton(
                                           icon: Icon(
                                             _obscurePassword
@@ -155,7 +139,18 @@ class _LoginScreenState extends State<LoginScreen> {
                                       const SizedBox(height: 8),
                                       FilledButton(
                                         onPressed: _submit,
-                                        child: const Text('Login'),
+                                        child: const Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.center,
+                                          children: [
+                                            Text('Login'),
+                                            SizedBox(width: 10),
+                                            Icon(
+                                              Icons.arrow_forward_rounded,
+                                              size: 18,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -189,7 +184,7 @@ class _LoginBrandHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 22),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: AppTheme.loginHeaderGradient,
@@ -197,32 +192,98 @@ class _LoginBrandHeader extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: AppTheme.largeRadius,
-      ),
-      child: Row(
-        children: [
-          ClipOval(
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 58,
-              height: 58,
-              fit: BoxFit.cover,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Flutter LMS', style: AppTheme.loginHeaderTitle),
-                const SizedBox(height: 4),
-                Text(
-                  'Learn something new every day',
-                  style: AppTheme.loginHeaderSubtitle,
-                ),
-              ],
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.22),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
           ),
         ],
+      ),
+      child: Stack(
+        children: [
+          const Positioned(top: -48, right: -28, child: _HeaderGlow(size: 130)),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(15),
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                      Icons.school_rounded,
+                      size: 52,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Flutter LMS', style: AppTheme.loginHeaderTitle),
+                    const SizedBox(height: 5),
+                    Text(
+                      'Learn something new every day',
+                      style: AppTheme.loginHeaderSubtitle,
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: const Text(
+                        'YOUR LEARNING JOURNEY',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HeaderGlow extends StatelessWidget {
+  final double size;
+
+  const _HeaderGlow({required this.size});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        shape: BoxShape.circle,
       ),
     );
   }

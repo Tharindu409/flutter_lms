@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../../core/routes/app_routes.dart';
-import '../models/dashboard_models.dart';
+import 'package:flutter_lms/models/dashboard_models.dart';
+import 'package:flutter_lms/utils/app_routes.dart';
 
 /// Shared page shell for all three role dashboards.
 class DashboardScaffold extends StatelessWidget {
@@ -57,10 +57,7 @@ class DashboardScaffold extends StatelessWidget {
           ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: children,
-      ),
+      body: ListView(padding: const EdgeInsets.all(16), children: children),
     );
   }
 }

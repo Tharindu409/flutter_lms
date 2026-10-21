@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:flutter_lms/utils/app_theme.dart';
+
 class LoadingView extends StatelessWidget {
   final String? message;
 
@@ -12,10 +14,7 @@ class LoadingView extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const CircularProgressIndicator(),
-          if (message != null) ...[
-            const SizedBox(height: 16),
-            Text(message!),
-          ],
+          if (message != null) ...[const SizedBox(height: 16), Text(message!)],
         ],
       ),
     );
@@ -43,7 +42,12 @@ class EmptyView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 64, color: Colors.grey.shade400),
+            Icon(
+              icon,
+              size: 64,
+              color: Theme.of(context).colorScheme.primary
+                  .withValues(alpha: 0.45),
+            ),
             const SizedBox(height: 12),
             Text(title, style: textTheme.titleMedium),
             if (message != null) ...[
@@ -51,7 +55,7 @@ class EmptyView extends StatelessWidget {
               Text(
                 message!,
                 textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(color: Colors.grey),
+                style: textTheme.bodyMedium,
               ),
             ],
           ],
@@ -75,7 +79,7 @@ class ErrorView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const Icon(Icons.error_outline, size: 64, color: AppTheme.error),
             const SizedBox(height: 12),
             Text(
               message,
@@ -110,8 +114,11 @@ class SuccessView extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.check_circle_outline,
-                size: 64, color: Colors.green),
+            const Icon(
+              Icons.check_circle_outline,
+              size: 64,
+              color: AppTheme.success,
+            ),
             const SizedBox(height: 12),
             Text(
               message,

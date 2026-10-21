@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../../shared/widgets/section_header.dart';
-import '../dashboard/data/dummy_dashboard_data.dart';
-import '../dashboard/widgets/dashboard_widgets.dart';
+import 'package:flutter_lms/services/dummy_dashboard_data.dart';
+import 'package:flutter_lms/widgets/dashboard_widgets.dart';
+import 'package:flutter_lms/widgets/section_header.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});

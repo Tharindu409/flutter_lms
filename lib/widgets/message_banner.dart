@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/app_theme.dart';
+import 'package:flutter_lms/utils/app_theme.dart';
 
 enum MessageType { info, success, error }
 

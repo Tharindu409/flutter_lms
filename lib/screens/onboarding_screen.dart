@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../core/routes/app_routes.dart';
-import '../../core/theme/app_theme.dart';
-import '../../shared/widgets/app_logo.dart';
+import 'package:flutter_lms/utils/app_routes.dart';
+import 'package:flutter_lms/utils/app_theme.dart';
+import 'package:flutter_lms/widgets/app_logo.dart';
 
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});

@@ -23,6 +23,17 @@ cd flutter_lms
 3. Start an Android emulator, then run the app: flutter run
 
 
+## Project Structure
+
+lib/
+  models/      plain Dart data classes
+  screens/     full pages
+  widgets/     reusable UI components
+  services/    API calls, storage, data sources
+  providers/   state management (Provider)
+  utils/       routes, theme, validators, constants
+  main.dart    app entry point
+
 ## Project Status
 
 | Day | Focus | Status |
@@ -38,11 +49,4 @@ cd flutter_lms
 | 9 | Admin, state management, navigation | Pending |
 | 10 | Responsive design, testing, final submission | Pending |
 
-## Daily Progress
-
-### Day 1
-- Set up Flutter, Android SDK and Android emulator (`flutter doctor` reports no issues)
-- Created the Flutter project and ran it on the emulator
-- Built the shared Login UI (email, password with show/hide toggle, login button)
-- Created the GitHub repository and README
 

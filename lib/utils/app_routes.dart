@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-import '../../features/admin/admin_dashboard.dart';
-import '../../features/auth/login_screen.dart';
-import '../../features/instructor/instructor_dashboard.dart';
-import '../../features/onboarding/onboarding_screen.dart';
-import '../../features/student/student_dashboard.dart';
-import '../../features/splash/splash_screen.dart';
+import 'package:flutter_lms/screens/admin_dashboard.dart';
+import 'package:flutter_lms/screens/instructor_dashboard.dart';
+import 'package:flutter_lms/screens/login_screen.dart';
+import 'package:flutter_lms/screens/onboarding_screen.dart';
+import 'package:flutter_lms/screens/splash_screen.dart';
+import 'package:flutter_lms/screens/student_dashboard.dart';
 
 class AppRoutes {
   static const splash = '/splash';

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primary = Color(0xFF3157C8);
-  static const Color background = Color(0xFFF5F7FC);
+  static const Color primary = Color(0xFF6747D7);
+  static const Color secondary = Color(0xFF12AFA3);
+  static const Color tertiary = Color(0xFFFF936B);
+  static const Color background = Color(0xFFF7F6FC);
   static const Color surface = Colors.white;
-  static const Color textPrimary = Color(0xFF17233C);
-  static const Color textSecondary = Color(0xFF68758D);
-  static const Color info = Color(0xFF3157C8);
-  static const Color success = Color(0xFF16845B);
-  static const Color error = Color(0xFFC44242);
+  static const Color textPrimary = Color(0xFF211B36);
+  static const Color textSecondary = Color(0xFF77728A);
+  static const Color info = Color(0xFF6747D7);
+  static const Color success = Color(0xFF168B73);
+  static const Color error = Color(0xFFD94B61);
   static const List<Color> loginHeaderGradient = [
-    Color(0xFF3157C8),
-    Color(0xFF5278E8),
+    Color(0xFF6547D7),
+    Color(0xFF9A5DEB),
+    Color(0xFFCA69D6),
   ];
   static const TextStyle loginHeaderTitle = TextStyle(
     color: Colors.white,
@@ -26,26 +29,45 @@ class AppTheme {
   );
 
   static const BorderRadius mediumRadius = BorderRadius.all(
-    Radius.circular(14),
+    Radius.circular(18),
   );
-  static const BorderRadius largeRadius = BorderRadius.all(Radius.circular(16));
+  static const BorderRadius largeRadius = BorderRadius.all(Radius.circular(24));
 
   static ThemeData get light {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       fontFamily: 'Poppins',
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primary,
-        brightness: Brightness.light,
-      ),
+      colorScheme:
+          ColorScheme.fromSeed(
+            seedColor: primary,
+            brightness: Brightness.light,
+          ).copyWith(
+            primary: primary,
+            secondary: secondary,
+            tertiary: tertiary,
+            surface: surface,
+            error: error,
+          ),
       scaffoldBackgroundColor: background,
+      appBarTheme: const AppBarTheme(
+        backgroundColor: background,
+        foregroundColor: textPrimary,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: TextStyle(
+          color: textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          fontFamily: 'Poppins',
+        ),
+      ),
       textTheme: const TextTheme(
         headlineSmall: TextStyle(
           color: textPrimary,
-          fontSize: 26,
+          fontSize: 28,
           fontWeight: FontWeight.w700,
-          letterSpacing: -0.5,
+          letterSpacing: -0.8,
         ),
         titleLarge: TextStyle(
           color: textPrimary,
@@ -65,10 +87,10 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: surface,
+        fillColor: const Color(0xFFFAF9FD),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,
-          vertical: 17,
+          vertical: 18,
         ),
         prefixIconColor: textSecondary,
         suffixIconColor: textSecondary,
@@ -83,7 +105,7 @@ class AppTheme {
         ),
         enabledBorder: const OutlineInputBorder(
           borderRadius: mediumRadius,
-          borderSide: BorderSide(color: Color(0xFFDCE2EE)),
+          borderSide: BorderSide(color: Color(0xFFEAE7F1)),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: mediumRadius,
@@ -100,9 +122,10 @@ class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size.fromHeight(54),
+          minimumSize: const Size.fromHeight(56),
           backgroundColor: primary,
           foregroundColor: Colors.white,
+          textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
           shape: RoundedRectangleBorder(borderRadius: mediumRadius),
         ),
       ),
@@ -115,8 +138,8 @@ class AppTheme {
       ),
       cardTheme: CardThemeData(
         color: surface,
-        elevation: 2,
-        shadowColor: const Color(0x140D1B38),
+        elevation: 3,
+        shadowColor: const Color(0x180F082B),
         margin: EdgeInsets.zero,
         shape: const RoundedRectangleBorder(borderRadius: largeRadius),
       ),
