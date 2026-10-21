@@ -28,8 +28,8 @@ cd flutter_lms
 | Day | Focus | Status |
 |-----|-------|--------|
 | 1 | Setup, project initialization, Login UI | Done |
-| 2 | Navigation, forms, validation, theme | Pending |
-| 3 | Splash, onboarding, role dashboards | Pending |
+| 2 | Navigation, forms, validation, theme | Done |
+| 3 | Splash, onboarding, role dashboards | Done |
 | 4 | Docker backend, Postman, core API setup | Pending |
 | 5 | Authentication, sessions, profiles | Pending |
 | 6 | Courses, enrollment, lessons, progress | Pending |
