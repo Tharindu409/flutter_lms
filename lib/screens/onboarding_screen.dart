@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import 'package:flutter_lms/utils/app_routes.dart';
@@ -224,7 +225,9 @@ class _OnboardingPage extends StatelessWidget {
         return SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(28, 12, 28, 16),
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight - 28),
+            constraints: BoxConstraints(
+               minHeight: math.max(0.0, constraints.maxHeight - 28),
+            ),  
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
