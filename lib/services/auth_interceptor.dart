@@ -17,6 +17,7 @@ class AuthInterceptor extends Interceptor {
   final void Function()? onSessionExpired;
 
   static const _authPrefix = '/api/v1/auth/';
+  static const _loginPath = '/api/v1/auth/login';
   static const _refreshPath = '/api/v1/auth/refresh-token';
   static const _retriedKey = 'auth_retried';
 
@@ -27,7 +28,7 @@ class AuthInterceptor extends Interceptor {
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    if (options.path != _refreshPath) {
+    if (options.path != _loginPath && options.path != _refreshPath) {
       final token = await tokenStorage.readAccessToken();
       if (token != null && token.isNotEmpty) {
         options.headers['Authorization'] = 'Bearer $token';
@@ -52,8 +53,9 @@ class AuthInterceptor extends Interceptor {
     }
 
     // If several requests fail together, only one refresh runs.
-    final refreshed = await (_refreshing ??=
-        _refreshTokens().whenComplete(() => _refreshing = null));
+    final refreshed = await (_refreshing ??= _refreshTokens().whenComplete(
+      () => _refreshing = null,
+    ));
 
     if (!refreshed) return handler.next(err);
 
@@ -80,11 +82,13 @@ class AuthInterceptor extends Interceptor {
 
     try {
       // Separate Dio without interceptors, so refresh can never loop.
-      final refreshDio = Dio(BaseOptions(
-        baseUrl: AppConfig.baseUrl,
-        connectTimeout: AppConfig.connectTimeout,
-        receiveTimeout: AppConfig.receiveTimeout,
-      ));
+      final refreshDio = Dio(
+        BaseOptions(
+          baseUrl: AppConfig.baseUrl,
+          connectTimeout: AppConfig.connectTimeout,
+          receiveTimeout: AppConfig.receiveTimeout,
+        ),
+      );
       final response = await refreshDio.post<dynamic>(
         _refreshPath,
         data: {'refreshToken': refreshToken},
