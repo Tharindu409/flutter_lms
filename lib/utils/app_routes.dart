@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'package:flutter_lms/screens/admin_dashboard.dart';
 import 'package:flutter_lms/screens/instructor_dashboard.dart';
 import 'package:flutter_lms/screens/login_screen.dart';
@@ -23,4 +22,18 @@ class AppRoutes {
     instructorDashboard: (_) => const InstructorDashboard(),
     adminDashboard: (_) => const AdminDashboard(),
   };
+
+  /// Dashboard route for the role returned by the backend.
+  static String? homeForRole(String? role) {
+    switch (role) {
+      case 'STUDENT':
+        return studentDashboard;
+      case 'INSTRUCTOR':
+        return instructorDashboard;
+      case 'ADMIN':
+        return adminDashboard;
+      default:
+        return null;
+    }
+  }
 }

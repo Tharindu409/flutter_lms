@@ -1,31 +1,32 @@
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_lms/services/api_client.dart';
 import 'package:flutter_lms/services/token_storage.dart';
-import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
 import 'package:provider/provider.dart';
+import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:flutter_lms/services/auth_service.dart';
+import 'package:flutter_lms/utils/app_navigator.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-
-  const tokenStorage = TokenStorage();
+  final tokenStorage = TokenStorage();
   final apiClient = ApiClient(tokenStorage);
+  final authService = AuthService(apiClient, tokenStorage);
 
   runApp(
     MultiProvider(
       providers: [
         Provider<TokenStorage>.value(value: tokenStorage),
         Provider<ApiClient>.value(value: apiClient),
+        ChangeNotifierProvider<AuthProvider>(
+          create: (_) => AuthProvider(authService),
+        ),
       ],
       child: const MyApp(),
     ),
   );
-
-   
 }
-
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});

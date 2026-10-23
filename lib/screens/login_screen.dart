@@ -6,6 +6,8 @@ import 'package:flutter_lms/utils/validators.dart';
 import 'package:flutter_lms/widgets/app_text_field.dart';
 import 'package:flutter_lms/widgets/message_banner.dart';
 import 'package:flutter_lms/widgets/section_header.dart';
+import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -38,18 +40,25 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
     if (!_formKey.currentState!.validate()) return;
 
-    // TEMPORARY: route by email prefix until the real API login (Day 5)
-    final email = _emailController.text.trim().toLowerCase();
-    String route = AppRoutes.studentDashboard;
-    if (email.startsWith('instructor')) {
-      route = AppRoutes.instructorDashboard;
-    } else if (email.startsWith('admin')) {
-      route = AppRoutes.adminDashboard;
+    final auth = context.read<AuthProvider>();
+    final success = await auth.login(
+      email: _emailController.text,
+      password: _passwordController.text,
+    );
+    if (!mounted || !success) return;
+
+    // Trust the role returned by the backend.
+    final route = AppRoutes.homeForRole(auth.role);
+    if (route == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Unknown account role.')));
+      return;
     }
-    Navigator.pushReplacementNamed(context, route);
+    Navigator.pushNamedAndRemoveUntil(context, route, (r) => false);
   }
 
   @override
@@ -97,10 +106,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                         subtitle:
                                             'Sign in to continue learning.',
                                       ),
-                                      const SizedBox(height: 20),
-                                      const MessageBanner(
-                                        message: 'Demo mode: use an email starting with student, instructor or admin.',
-                                      ),
+
                                       const SizedBox(height: 20),
                                       AppTextField(
                                         controller: _emailController,
@@ -137,17 +143,33 @@ class _LoginScreenState extends State<LoginScreen> {
                                         ),
                                       ),
                                       const SizedBox(height: 8),
-                                      FilledButton(
-                                        onPressed: _submit,
-                                        child: const Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
+                                      Consumer<AuthProvider>(
+                                        builder: (context, auth, _) => Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.stretch,
                                           children: [
-                                            Text('Login'),
-                                            SizedBox(width: 10),
-                                            Icon(
-                                              Icons.arrow_forward_rounded,
-                                              size: 18,
+                                            if (auth.errorMessage != null) ...[
+                                              MessageBanner(
+                                                message: auth.errorMessage!,
+                                                type: MessageType.error,
+                                              ),
+                                              const SizedBox(height: 16),
+                                            ],
+                                            FilledButton(
+                                              onPressed: auth.isLoading
+                                                  ? null
+                                                  : _submit,
+                                              child: auth.isLoading
+                                                  ? const SizedBox(
+                                                      height: 22,
+                                                      width: 22,
+                                                      child:
+                                                          CircularProgressIndicator(
+                                                            strokeWidth: 2.5,
+                                                            color: Colors.white,
+                                                          ),
+                                                    )
+                                                  : const Text('Login'),
                                             ),
                                           ],
                                         ),

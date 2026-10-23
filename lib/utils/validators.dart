@@ -1,9 +1,21 @@
 class Validators {
+  static String? requiredField(String? value, String label) {
+    if ((value ?? '').trim().isEmpty) return '$label is required';
+    return null;
+  }
+
   static String? email(String? value) {
-    final email = value?.trim() ?? '';
-    if (email.isEmpty) return 'Email is required';
-    final regex = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
-    if (!regex.hasMatch(email)) return 'Enter a valid email address';
+    final trimmed = (value ?? '').trim();
+    if (trimmed.isEmpty) return 'Email is required';
+
+    final emailRegex = RegExp(
+      r"^[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$",
+    );
+
+    if (!emailRegex.hasMatch(trimmed)) {
+      return 'Enter a valid email address';
+    }
+
     return null;
   }
 
