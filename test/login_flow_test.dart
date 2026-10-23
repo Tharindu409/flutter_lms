@@ -1,16 +1,52 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:flutter_lms/services/api_client.dart';
+import 'package:flutter_lms/services/auth_service.dart';
+import 'package:flutter_lms/services/token_storage.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
 import 'package:flutter_lms/widgets/app_logo.dart';
+import 'package:provider/provider.dart';
 
 void main() {
+  test('stores API tokens and sends the access token on logout', () async {
+    final tokenStorage = TokenStorage.memory();
+    final apiClient = ApiClient(tokenStorage)
+      ..dio.options.baseUrl = 'http://test.local';
+    final adapter = _FakeAuthAdapter();
+    apiClient.dio.httpClientAdapter = adapter;
+    final authService = AuthService(apiClient, tokenStorage);
+
+    await authService.login(email: 'student1@test.com', password: 'password8');
+    expect(await tokenStorage.readAccessToken(), 'access-student-1');
+    expect(await tokenStorage.readRefreshToken(), 'refresh-student-1');
+
+    await authService.logout();
+
+    expect(adapter.logoutAuthorization, 'Bearer access-student-1');
+    expect(await tokenStorage.hasSession(), isFalse);
+  });
+
   Future<void> openLogin(WidgetTester tester) async {
+    final tokenStorage = TokenStorage.memory();
+    final apiClient = ApiClient(tokenStorage)
+      ..dio.options.baseUrl = 'http://test.local'
+      ..dio.httpClientAdapter = _FakeAuthAdapter();
+    final authService = AuthService(apiClient, tokenStorage);
+
     await tester.pumpWidget(
-      MaterialApp(
-        theme: AppTheme.light,
-        initialRoute: AppRoutes.onboarding,
-        routes: AppRoutes.routes,
+      ChangeNotifierProvider(
+        create: (_) => AuthProvider(authService),
+        child: MaterialApp(
+          theme: AppTheme.light,
+          initialRoute: AppRoutes.onboarding,
+          routes: AppRoutes.routes,
+        ),
       ),
     );
 
@@ -135,6 +171,25 @@ void main() {
     expect(find.text('Password must be at least 8 characters'), findsOneWidget);
   });
 
+  testWidgets('backend login errors are displayed without routing', (
+    tester,
+  ) async {
+    await openLogin(tester);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'unknown@test.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'password8',
+    );
+    await submitLogin(tester);
+
+    expect(find.text('Invalid email or password.'), findsOneWidget);
+    expect(find.text('Welcome back'), findsOneWidget);
+  });
+
   for (final role in [
     (email: 'student1@test.com', dashboard: 'Hello, Student!'),
     (email: 'instructor1@test.com', dashboard: 'Instructor Dashboard'),
@@ -188,4 +243,67 @@ void main() {
       isFalse,
     );
   });
+}
+
+class _FakeAuthAdapter implements HttpClientAdapter {
+  String? logoutAuthorization;
+
+  static const _accounts = {
+    'student1@test.com': ('student-1', 'Student', 'STUDENT'),
+    'instructor1@test.com': ('instructor-1', 'Instructor', 'INSTRUCTOR'),
+    'admin1@test.com': ('admin-1', 'Admin', 'ADMIN'),
+  };
+
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    if (options.path == '/api/v1/auth/login') {
+      final request = options.data as Map<String, dynamic>;
+      final account = _accounts[request['email']];
+      if (account == null || request['password'] != 'password8') {
+        return _response({
+          'message': 'Invalid email or password.',
+        }, statusCode: 401);
+      }
+
+      return _response({
+        'data': {
+          'user': {
+            'id': account.$1,
+            'firstName': account.$2,
+            'lastName': 'User',
+            'email': request['email'],
+            'role': account.$3,
+          },
+          'tokens': {
+            'accessToken': 'access-${account.$1}',
+            'refreshToken': 'refresh-${account.$1}',
+          },
+        },
+      });
+    }
+
+    if (options.path == '/api/v1/auth/logout') {
+      logoutAuthorization = options.headers['Authorization'] as String?;
+      return _response({'message': 'Logged out.'});
+    }
+
+    return _response({'message': 'Unexpected test endpoint.'}, statusCode: 404);
+  }
+
+  ResponseBody _response(Map<String, Object?> body, {int statusCode = 200}) {
+    return ResponseBody.fromString(
+      jsonEncode(body),
+      statusCode,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
 }

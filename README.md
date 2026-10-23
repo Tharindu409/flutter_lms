@@ -22,6 +22,26 @@ cd flutter_lms
 
 3. Start an Android emulator, then run the app: flutter run
 
+## Backend connection
+
+The shared login form sends `POST /api/v1/auth/login` with an `email` and
+`password`. It expects the successful response payload to contain a `user`
+object and `tokens.accessToken` / `tokens.refreshToken`. The role on the
+returned user selects the matching dashboard; login credentials are not
+hardcoded in the app.
+
+The default API address is `http://10.0.2.2:5000` for an Android emulator
+connecting to a backend running on the development computer. Override it for
+another device or environment with a Dart define, for example:
+
+```powershell
+flutter run --dart-define=API_BASE_URL=http://192.168.1.20:5000
+```
+
+Use the backend host reachable from your device (and HTTPS for deployed
+environments). The API base address must not include `/api/v1`; endpoint paths
+already include it.
+
 
 ## Project Structure
 
@@ -48,5 +68,4 @@ lib/
 | 8 | Instructor course building | Pending |
 | 9 | Admin, state management, navigation | Pending |
 | 10 | Responsive design, testing, final submission | Pending |
-
 
