@@ -36,13 +36,6 @@ class AuthProvider extends ChangeNotifier {
     }
   }
 
-  Future<void> logout() async {
-    await _authService.logout();
-    user = null;
-    errorMessage = null;
-    notifyListeners();
-  }
-
   Future<bool> restoreSession() async {
     try {
       user = await _authService.restoreSession();
@@ -53,9 +46,40 @@ class AuthProvider extends ChangeNotifier {
     return user != null;
   }
 
+  /// Used after email verification, which returns a ready session.
+  void setUser(UserModel value) {
+    user = value;
+    notifyListeners();
+  }
+
+  void clearError() {
+    if (errorMessage == null) return;
+    errorMessage = null;
+    notifyListeners();
+  }
+
+  Future<void> logout() async {
+    await _authService.logout();
+    _clear();
+  }
+
+  /// Returns null on success, or an error message to show.
+  Future<String?> logoutAll() async {
+    try {
+      await _authService.logoutAll();
+      _clear();
+      return null;
+    } on ApiException catch (error) {
+      return error.message;
+    }
+  }
+
   /// Called when token refresh fails while the app is in use.
-  void handleSessionExpired() {
+  void handleSessionExpired() => _clear();
+
+  void _clear() {
     user = null;
+    errorMessage = null;
     notifyListeners();
   }
 }
