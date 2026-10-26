@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_lms/models/dashboard_models.dart';
+import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:flutter_lms/providers/profile_provider.dart';
+import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
+import 'package:flutter_lms/widgets/confirm_dialog.dart';
+import 'package:provider/provider.dart';
 
 /// Shared page shell for all three role dashboards.
 class DashboardScaffold extends StatelessWidget {
@@ -14,25 +19,32 @@ class DashboardScaffold extends StatelessWidget {
   });
 
   Future<void> _confirmLogout(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Logout'),
-        content: const Text('Are you sure you want to logout?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Logout'),
-          ),
-        ],
-      ),
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmLabel: 'Logout',
     );
+    if (!context.mounted || !confirmed) return;
 
-    if (confirmed == true && context.mounted) {
+    final auth = context.read<AuthProvider>();
+    final profile = context.read<ProfileProvider>();
+    try {
+      await auth.logout();
+    } on ApiException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to log out. Please try again.')),
+      );
+      return;
+    }
+    if (context.mounted) {
+      profile.reset();
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.login,
@@ -50,6 +62,11 @@ class DashboardScaffold extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {},
+          ),
+          IconButton(
+            tooltip: 'Profile',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: () => Navigator.pushNamed(context, AppRoutes.profile),
           ),
           IconButton(
             icon: const Icon(Icons.logout),
