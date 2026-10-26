@@ -4,6 +4,7 @@ class UserModel {
   final String lastName;
   final String email;
   final String role; // STUDENT, INSTRUCTOR or ADMIN
+  final String? bio;
   final String? profileImageUrl;
 
   const UserModel({
@@ -12,6 +13,7 @@ class UserModel {
     required this.lastName,
     required this.email,
     required this.role,
+    this.bio,
     this.profileImageUrl,
   });
 
@@ -22,20 +24,32 @@ class UserModel {
       lastName: (json['lastName'] ?? '').toString(),
       email: (json['email'] ?? '').toString(),
       role: (json['role'] ?? '').toString().toUpperCase(),
+      bio: json['bio']?.toString(),
       profileImageUrl: json['profileImageUrl']?.toString(),
     );
   }
 
-    UserModel withRole(String newRole) {
+  String get fullName => '$firstName $lastName'.trim();
+
+  String get initials {
+    final first = firstName.isNotEmpty ? firstName[0] : '';
+    final last = lastName.isNotEmpty ? lastName[0] : '';
+    final value = '$first$last'.toUpperCase();
+    return value.isEmpty ? '?' : value;
+  }
+
+  bool get hasProfileImage =>
+      profileImageUrl != null && profileImageUrl!.isNotEmpty;
+
+  UserModel withRole(String newRole) {
     return UserModel(
       id: id,
       firstName: firstName,
       lastName: lastName,
       email: email,
       role: newRole,
+      bio: bio,
       profileImageUrl: profileImageUrl,
     );
   }
-
-  String get fullName => '$firstName $lastName'.trim();
 }

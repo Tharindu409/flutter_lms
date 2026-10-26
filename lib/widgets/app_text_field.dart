@@ -8,6 +8,11 @@ class AppTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffix;
+  final int maxLines;
+  final bool readOnly;
+  final VoidCallback? onTap;
+  final TextInputAction? textInputAction;
+  final String? hint;
 
   const AppTextField({
     super.key,
@@ -18,6 +23,11 @@ class AppTextField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.suffix,
+    this.maxLines = 1,
+    this.readOnly = false,
+    this.onTap,
+    this.textInputAction,
+    this.hint,
   });
 
   @override
@@ -27,11 +37,16 @@ class AppTextField extends StatelessWidget {
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
+      maxLines: obscureText ? 1 : maxLines,
+      readOnly: readOnly,
+      onTap: onTap,
+      textInputAction: textInputAction,
       decoration: InputDecoration(
         labelText: label,
+        hintText: hint,
         prefixIcon: Icon(icon),
         suffixIcon: suffix,
-        alignLabelWithHint: true,
+        alignLabelWithHint: maxLines > 1,
       ),
     );
   }
