@@ -4,6 +4,7 @@ import 'package:flutter_lms/providers/auth_provider.dart';
 import 'package:flutter_lms/providers/profile_provider.dart';
 import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
+import 'package:flutter_lms/utils/app_theme.dart';
 import 'package:flutter_lms/widgets/confirm_dialog.dart';
 import 'package:provider/provider.dart';
 
@@ -91,15 +92,14 @@ class GreetingHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = Theme.of(context).colorScheme.primary;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: AppTheme.largeRadius,
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [primary, Color.alphaBlend(Colors.black26, primary)],
+          colors: AppTheme.loginHeaderGradient,
         ),
       ),
       child: Column(
@@ -163,8 +163,16 @@ class StatCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(stat.icon, color: stat.color),
-            const SizedBox(height: 10),
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: stat.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(stat.icon, color: stat.color, size: 20),
+            ),
+            const SizedBox(height: 6),
             Text(stat.value, style: textTheme.headlineSmall),
             Text(
               stat.label,
@@ -198,8 +206,16 @@ class QuickActionCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(action.icon, color: primary, size: 28),
-            const SizedBox(height: 8),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(action.icon, color: primary, size: 22),
+            ),
+            const SizedBox(height: 7),
             Text(
               action.label,
               maxLines: 1,

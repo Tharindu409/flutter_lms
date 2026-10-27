@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-
+import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:flutter_lms/providers/profile_provider.dart';
+import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
 import 'package:flutter_lms/widgets/app_logo.dart';
+import 'package:flutter_lms/widgets/confirm_dialog.dart';
+import 'package:provider/provider.dart';
 
 class StudentDashboard extends StatelessWidget {
   const StudentDashboard({super.key});
@@ -11,22 +15,22 @@ class StudentDashboard extends StatelessWidget {
     _DashboardAction(
       label: 'Join Online Class',
       icon: Icons.videocam_outlined,
-      color: Color(0xFF3269E9),
+      color: AppTheme.primary,
     ),
     _DashboardAction(
       label: 'Submit Assignment',
       icon: Icons.assignment_outlined,
-      color: Color(0xFF18A85A),
+      color: AppTheme.secondary,
     ),
     _DashboardAction(
       label: 'Check Grades',
       icon: Icons.bar_chart_rounded,
-      color: Color(0xFFE58A00),
+      color: AppTheme.tertiary,
     ),
     _DashboardAction(
       label: 'Contact Teacher',
       icon: Icons.mail_outline_rounded,
-      color: Color(0xFF9638DB),
+      color: AppTheme.primary,
     ),
   ];
 
@@ -34,22 +38,22 @@ class StudentDashboard extends StatelessWidget {
     _DashboardAction(
       label: 'Courses',
       icon: Icons.school_outlined,
-      color: Color(0xFF9638DB),
+      color: AppTheme.primary,
     ),
     _DashboardAction(
-      label: 'Assignments',
-      icon: Icons.description_outlined,
-      color: Color(0xFF3981E8),
+      label: 'My Courses',
+      icon: Icons.menu_book_outlined,
+      color: AppTheme.secondary,
     ),
     _DashboardAction(
       label: 'Grades',
       icon: Icons.show_chart_rounded,
-      color: Color(0xFF28A875),
+      color: AppTheme.tertiary,
     ),
     _DashboardAction(
       label: 'Resources',
       icon: Icons.menu_book_outlined,
-      color: Color(0xFFE6A41B),
+      color: AppTheme.secondary,
     ),
   ];
 
@@ -59,7 +63,33 @@ class StudentDashboard extends StatelessWidget {
       ..showSnackBar(SnackBar(content: Text('$feature coming soon')));
   }
 
-  void _logout(BuildContext context) {
+  Future<void> _logout(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Logout',
+      message: 'Are you sure you want to logout?',
+      confirmLabel: 'Logout',
+    );
+    if (!context.mounted || !confirmed) return;
+
+    final auth = context.read<AuthProvider>();
+    final profile = context.read<ProfileProvider>();
+    try {
+      await auth.logout();
+    } on ApiException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(error.message)));
+      return;
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to log out. Please try again.')),
+      );
+      return;
+    }
+    if (!context.mounted) return;
+    profile.reset();
     Navigator.pushNamedAndRemoveUntil(
       context,
       AppRoutes.login,
@@ -77,6 +107,16 @@ class StudentDashboard extends StatelessWidget {
         title: Row(
           children: [
             const AppLogo(size: 34),
+            Card(
+              child: ListTile(
+                leading: const Icon(Icons.travel_explore),
+                title: const Text('Browse courses'),
+                subtitle: const Text('Find a course and start learning'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.pushNamed(context, AppRoutes.courses),
+              ),
+            ),
+            const SizedBox(height: 16),
             const SizedBox(width: 9),
             Text(
               'Flutter LMS',
@@ -98,9 +138,23 @@ class StudentDashboard extends StatelessWidget {
             child: PopupMenuButton<String>(
               tooltip: 'Account menu',
               onSelected: (value) {
-                if (value == 'logout') _logout(context);
+                if (value == 'profile') {
+                  Navigator.pushNamed(context, AppRoutes.profile);
+                } else if (value == 'logout') {
+                  _logout(context);
+                }
               },
               itemBuilder: (context) => const [
+                PopupMenuItem(
+                  value: 'profile',
+                  child: Row(
+                    children: [
+                      Icon(Icons.account_circle_outlined, size: 19),
+                      SizedBox(width: 10),
+                      Text('Profile'),
+                    ],
+                  ),
+                ),
                 PopupMenuItem(
                   value: 'logout',
                   child: Row(
@@ -140,8 +194,18 @@ class StudentDashboard extends StatelessWidget {
                   'Hello, Student!',
                   style: textTheme.titleLarge?.copyWith(fontSize: 22),
                 ),
-                const SizedBox(height: 3),
-                Text(_currentDate(), style: textTheme.bodySmall),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 15,
+                      color: AppTheme.textSecondary,
+                    ),
+                    const SizedBox(width: 7),
+                    Text(_currentDate(), style: textTheme.bodySmall),
+                  ],
+                ),
                 const SizedBox(height: 18),
                 const _SemesterProgressCard(),
                 const SizedBox(height: 22),
@@ -157,7 +221,15 @@ class StudentDashboard extends StatelessWidget {
                 const SizedBox(height: 10),
                 _ActionGrid(
                   actions: _quickAccess,
-                  onTap: (action) => _showComingSoon(context, action.label),
+                  onTap: (action) {
+                    if (action.label == 'Courses') {
+                      Navigator.pushNamed(context, AppRoutes.courses);
+                    } else if (action.label == 'My Courses') {
+                      Navigator.pushNamed(context, AppRoutes.myCourses);
+                    } else {
+                      _showComingSoon(context, action.label);
+                    }
+                  },
                   filled: false,
                 ),
               ],
@@ -209,15 +281,15 @@ class _SemesterProgressCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFFB23BE4), Color(0xFF8129D2), Color(0xFF6335CF)],
+          colors: AppTheme.loginHeaderGradient,
         ),
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: const [
+        borderRadius: AppTheme.largeRadius,
+        boxShadow: [
           BoxShadow(
-            color: Color(0x26812AD2),
+            color: AppTheme.primary.withValues(alpha: 0.18),
             blurRadius: 16,
             offset: Offset(0, 7),
           ),
@@ -230,7 +302,7 @@ class _SemesterProgressCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Semester Progress',
+                  'Keep learning',
                   style: textTheme.titleSmall?.copyWith(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
@@ -238,27 +310,17 @@ class _SemesterProgressCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'You’re doing great!',
+                  'Your enrolled courses are ready when you are.',
                   style: textTheme.bodySmall?.copyWith(
                     color: Colors.white.withValues(alpha: 0.8),
                   ),
                 ),
                 const SizedBox(height: 13),
-                const Text(
-                  '68%',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    height: 1.1,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '8 weeks remaining',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
+                TextButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, AppRoutes.myCourses),
+                  style: TextButton.styleFrom(foregroundColor: Colors.white),
+                  child: const Text('View my courses'),
                 ),
               ],
             ),
@@ -270,24 +332,7 @@ class _SemesterProgressCard extends StatelessWidget {
             child: Stack(
               alignment: Alignment.center,
               children: [
-                SizedBox.expand(
-                  child: CircularProgressIndicator(
-                    value: 0.68,
-                    strokeWidth: 5,
-                    backgroundColor: Colors.white.withValues(alpha: 0.22),
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                      Colors.white,
-                    ),
-                  ),
-                ),
-                const Text(
-                  '68%',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+                const Icon(Icons.school_rounded, color: Colors.white, size: 24),
               ],
             ),
           ),
@@ -318,7 +363,7 @@ class _ActionGrid extends StatelessWidget {
         crossAxisCount: 2,
         crossAxisSpacing: 10,
         mainAxisSpacing: 10,
-        mainAxisExtent: 68,
+        mainAxisExtent: 76,
       ),
       itemBuilder: (context, index) {
         final action = actions[index];
@@ -349,10 +394,10 @@ class _ActionTile extends StatelessWidget {
 
     return Material(
       color: filled ? action.color : Colors.white,
-      borderRadius: BorderRadius.circular(13),
+      borderRadius: BorderRadius.circular(16),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(13),
+        borderRadius: BorderRadius.circular(16),
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
@@ -371,13 +416,13 @@ class _ActionTile extends StatelessWidget {
           child: Row(
             children: [
               Container(
-                width: 34,
-                height: 34,
+                width: 38,
+                height: 38,
                 decoration: BoxDecoration(
                   color: filled
                       ? Colors.white.withValues(alpha: 0.2)
                       : action.color.withValues(alpha: 0.11),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
                   action.icon,

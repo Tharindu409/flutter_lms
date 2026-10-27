@@ -12,6 +12,15 @@ import 'package:flutter_lms/screens/profile/edit_profile_screen.dart';
 import 'package:flutter_lms/screens/profile/profile_screen.dart';
 import 'package:flutter_lms/screens/splash_screen.dart';
 import 'package:flutter_lms/screens/student_dashboard.dart';
+import 'package:flutter_lms/screens/courses_screen.dart';
+import 'package:flutter_lms/screens/student_learning_screens.dart';
+import 'package:flutter_lms/providers/course_detail_provider.dart';
+import 'package:flutter_lms/providers/learning_provider.dart';
+import 'package:flutter_lms/services/api_client.dart';
+import 'package:flutter_lms/services/course_service.dart';
+import 'package:flutter_lms/services/enrollment_service.dart';
+import 'package:flutter_lms/services/learning_service.dart';
+import 'package:provider/provider.dart';
 
 class AppRoutes {
   static const splash = '/splash';
@@ -27,6 +36,11 @@ class AppRoutes {
   static const resetPassword = '/reset-password';
   static const profile = '/profile';
   static const editProfile = '/profile/edit';
+  static const courses = '/courses';
+  static const courseDetail = '/courses/detail';
+  static const myCourses = '/my-courses';
+  static const curriculum = '/learning/curriculum';
+  static const lesson = '/learning/lesson';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -42,7 +56,97 @@ class AppRoutes {
     resetPassword: (_) => const ResetPasswordScreen(),
     profile: (_) => const ProfileScreen(),
     editProfile: (_) => const EditProfileScreen(),
+    courses: (_) => const CoursesScreen(),
   };
+
+  static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
+    final arguments = settings.arguments;
+    switch (settings.name) {
+      case courseDetail:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<CourseDetailProvider>(
+              create: (_) => CourseDetailProvider(
+                CourseService(apiClient),
+                EnrollmentService(apiClient),
+              ),
+              child: CourseDetailScreen(courseId: courseId),
+            );
+          },
+        );
+      case myCourses:
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => const MyCoursesScreen(),
+        );
+      case curriculum:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<LearningProvider>(
+              create: (_) => LearningProvider(
+                CourseService(apiClient),
+                LearningService(apiClient),
+                EnrollmentService(apiClient),
+              ),
+              child: CurriculumScreen(
+                courseId: courseId,
+                title:
+                    _stringArgument(arguments, 'title') ?? 'Course curriculum',
+                enrollmentId: _stringArgument(arguments, 'enrollmentId'),
+              ),
+            );
+          },
+        );
+      case lesson:
+        final lessonId = _stringArgument(arguments, 'lessonId');
+        final learningProvider = arguments is Map
+            ? arguments['learningProvider']
+            : null;
+        if (lessonId == null || learningProvider is! LearningProvider) {
+          return _invalidRoute();
+        }
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider<LearningProvider>.value(
+            value: learningProvider,
+            child: LessonPlayerScreen(
+              lessonId: lessonId,
+              title: _stringArgument(arguments, 'title') ?? 'Lesson',
+            ),
+          ),
+        );
+      default:
+        return null;
+    }
+  }
+
+  static String? _stringArgument(dynamic arguments, String key) {
+    if (arguments is String && key == 'courseId') return arguments;
+    if (arguments is Map) {
+      final value = arguments[key]?.toString();
+      return value == null || value.isEmpty ? null : value;
+    }
+    return null;
+  }
+
+  static Route<dynamic> _invalidRoute() {
+    return MaterialPageRoute<void>(
+      builder: (context) => Scaffold(
+        appBar: AppBar(title: const Text('Unable to open page')),
+        body: const Center(
+          child: Text('The requested course or lesson is unavailable.'),
+        ),
+      ),
+    );
+  }
 
   /// Dashboard route for the role returned by the backend.
   static String? homeForRole(String? role) {
