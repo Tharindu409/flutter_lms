@@ -1,0 +1,45 @@
+import 'package:dio/dio.dart';
+import 'package:flutter_lms/models/enrollment.dart';
+import 'package:flutter_lms/models/paged_result.dart';
+import 'package:flutter_lms/services/api_client.dart';
+import 'package:flutter_lms/utils/api_guard.dart';
+import 'package:flutter_lms/utils/api_response.dart';
+
+class EnrollmentService {
+  EnrollmentService(this._apiClient);
+
+  final ApiClient _apiClient;
+
+  Dio get _dio => _apiClient.dio;
+
+  /// The backend rejects duplicate enrollments and unpublished courses.
+  Future<void> enroll(String courseId) {
+    return guardApi<void>(() async {
+      await _dio.post<dynamic>('/api/v1/courses/$courseId/enroll');
+    });
+  }
+
+  /// [status] can be ACTIVE, COMPLETED or CANCELLED. Null returns all.
+  Future<PagedResult<Enrollment>> getMyEnrollments({
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) {
+    return guardApi(() async {
+      final response = await _dio.get<dynamic>(
+        '/api/v1/enrollments/me',
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (status != null && status.isNotEmpty) 'status': status,
+        },
+      );
+      return PagedResult.fromData(
+        ApiResponse.data(response),
+        Enrollment.fromJson,
+        fallbackPage: page,
+        fallbackLimit: limit,
+      );
+    });
+  }
+}
