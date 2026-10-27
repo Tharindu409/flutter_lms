@@ -5,8 +5,10 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_lms/providers/auth_provider.dart';
+import 'package:flutter_lms/providers/profile_provider.dart';
 import 'package:flutter_lms/services/api_client.dart';
 import 'package:flutter_lms/services/auth_service.dart';
+import 'package:flutter_lms/services/profile_service.dart';
 import 'package:flutter_lms/services/token_storage.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
@@ -38,10 +40,16 @@ void main() {
       ..dio.options.baseUrl = 'http://test.local'
       ..dio.httpClientAdapter = _FakeAuthAdapter();
     final authService = AuthService(apiClient, tokenStorage);
+    final profileService = ProfileService(apiClient);
 
     await tester.pumpWidget(
-      ChangeNotifierProvider(
-        create: (_) => AuthProvider(authService),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider(create: (_) => AuthProvider(authService)),
+          ChangeNotifierProvider(
+            create: (_) => ProfileProvider(profileService),
+          ),
+        ],
         child: MaterialApp(
           theme: AppTheme.light,
           initialRoute: AppRoutes.onboarding,
@@ -129,7 +137,7 @@ void main() {
 
     expect(find.text('Hello, Student!'), findsOneWidget);
     expect(find.text('Semester Progress'), findsOneWidget);
-    expect(find.text('68%'), findsNWidgets(2));
+    expect(find.text('68% complete'), findsOneWidget);
     expect(find.text('Quick Tasks'), findsOneWidget);
     expect(find.text('Join Online Class'), findsOneWidget);
     expect(find.text('Submit Assignment'), findsOneWidget);
@@ -216,6 +224,27 @@ void main() {
     });
   }
 
+  testWidgets('student account menu opens profile', (tester) async {
+    await openLogin(tester);
+
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Email'),
+      'student1@test.com',
+    );
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Password'),
+      'password8',
+    );
+    await submitLogin(tester);
+
+    await tester.tap(find.text('ST'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Profile'), findsOneWidget);
+  });
+
   testWidgets('logout returns to login without dashboard in back stack', (
     tester,
   ) async {
@@ -234,6 +263,9 @@ void main() {
     await tester.tap(find.text('ST'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Log out'));
+    await tester.pumpAndSettle();
+    expect(find.text('Are you sure you want to logout?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, 'Logout'));
     await tester.pumpAndSettle();
 
     expect(find.text('Welcome back'), findsOneWidget);
