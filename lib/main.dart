@@ -11,8 +11,10 @@ import 'package:flutter_lms/utils/app_theme.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_lms/providers/course_catalog_provider.dart';
 import 'package:flutter_lms/providers/my_courses_provider.dart';
+import 'package:flutter_lms/providers/notification_provider.dart';
 import 'package:flutter_lms/services/course_service.dart';
 import 'package:flutter_lms/services/enrollment_service.dart';
+import 'package:flutter_lms/services/notification_service.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,16 +42,24 @@ void main() {
 
   final courseService = CourseService(apiClient);
   final enrollmentService = EnrollmentService(apiClient);
+  final notificationService = NotificationService(apiClient);
   final catalogProvider = CourseCatalogProvider(courseService);
   final myCoursesProvider = MyCoursesProvider(enrollmentService);
+  final notificationProvider = NotificationProvider(notificationService);
+  var wasLoggedIn = false;
 
   // Clear cached course data when the user logs out or the session expires,
   // so the next user never sees the previous user's courses.
   authProvider.addListener(() {
-    if (!authProvider.isLoggedIn) {
+    final isLoggedIn = authProvider.isLoggedIn;
+    if (!isLoggedIn) {
       catalogProvider.reset();
       myCoursesProvider.reset();
+      notificationProvider.reset();
+    } else if (!wasLoggedIn) {
+      notificationProvider.refreshUnreadCount();
     }
+    wasLoggedIn = isLoggedIn;
   });
 
   runApp(
@@ -66,6 +76,10 @@ void main() {
         ),
         ChangeNotifierProvider<MyCoursesProvider>.value(
           value: myCoursesProvider,
+        ),
+        Provider<NotificationService>.value(value: notificationService),
+        ChangeNotifierProvider<NotificationProvider>.value(
+          value: notificationProvider,
         ),
       ],
       child: const MyApp(),

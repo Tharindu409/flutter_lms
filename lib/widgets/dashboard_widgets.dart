@@ -80,6 +80,185 @@ class DashboardScaffold extends StatelessWidget {
   }
 }
 
+class DashboardActionCard extends StatelessWidget {
+  const DashboardActionCard({
+    super.key,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+    this.accentColor = AppTheme.primary,
+  });
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color accentColor;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      elevation: 1.5,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: AppTheme.largeRadius,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(icon, color: accentColor, size: 23),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: scheme.onSurface,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SummaryStatCard extends StatelessWidget {
+  const SummaryStatCard({
+    super.key,
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(width: 9),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.bodySmall
+                    ?.copyWith(color: Colors.white.withValues(alpha: 0.84)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class DashboardSummarySkeleton extends StatefulWidget {
+  const DashboardSummarySkeleton({super.key});
+
+  @override
+  State<DashboardSummarySkeleton> createState() =>
+      _DashboardSummarySkeletonState();
+}
+
+class _DashboardSummarySkeletonState extends State<DashboardSummarySkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) => Opacity(
+        opacity: 0.5 + (_controller.value * 0.35),
+        child: Container(
+          height: 156,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: AppTheme.largeRadius,
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                height: 18,
+                width: 150,
+                decoration: _skeletonDecoration(context),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                height: 14,
+                width: 220,
+                decoration: _skeletonDecoration(context),
+              ),
+              const Spacer(),
+              Container(
+                height: 42,
+                width: 168,
+                decoration: _skeletonDecoration(context),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _skeletonDecoration(BuildContext context) => BoxDecoration(
+    color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.76),
+    borderRadius: BorderRadius.circular(12),
+  );
+}
+
 class GreetingHeader extends StatelessWidget {
   final String greeting;
   final String subtitle;

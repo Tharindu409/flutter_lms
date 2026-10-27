@@ -6,11 +6,16 @@ import 'package:flutter_lms/models/lesson.dart';
 import 'package:flutter_lms/providers/course_detail_provider.dart';
 import 'package:flutter_lms/providers/learning_provider.dart';
 import 'package:flutter_lms/providers/my_courses_provider.dart';
+import 'package:flutter_lms/providers/quiz_provider.dart';
+import 'package:flutter_lms/providers/assignment_provider.dart';
 import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/widgets/course_card.dart';
 import 'package:flutter_lms/widgets/progress_bar.dart';
+import 'package:flutter_lms/widgets/section_header.dart';
 import 'package:flutter_lms/widgets/state_views.dart';
+import 'package:flutter_lms/screens/quiz_screens.dart';
+import 'package:flutter_lms/screens/assignment_screens.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
@@ -261,18 +266,45 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
       body: Consumer<MyCoursesProvider>(
         builder: (context, provider, _) => Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: SegmentedButton<String>(
-                segments: const [
-                  ButtonSegment(value: 'ACTIVE', label: Text('Active')),
-                  ButtonSegment(value: 'COMPLETED', label: Text('Completed')),
-                ],
-                selected: {provider.status},
-                onSelectionChanged: (value) => provider.setStatus(value.first),
+            Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 920),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const SectionHeader(
+                        title: 'Your learning',
+                        subtitle:
+                            'Continue a course or revisit completed work.',
+                      ),
+                      const SizedBox(height: 16),
+                      SegmentedButton<String>(
+                        segments: const [
+                          ButtonSegment(value: 'ACTIVE', label: Text('Active')),
+                          ButtonSegment(
+                            value: 'COMPLETED',
+                            label: Text('Completed'),
+                          ),
+                        ],
+                        selected: {provider.status},
+                        onSelectionChanged: (value) =>
+                            provider.setStatus(value.first),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            Expanded(child: _content(provider)),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 920),
+                  child: _content(provider),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -290,18 +322,31 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
       );
     }
     if (provider.enrollments.isEmpty) {
-      return EmptyView(
-        title: provider.status == 'COMPLETED'
-            ? 'No completed courses'
-            : 'No active courses',
-        message: 'Courses you enroll in will appear here.',
-        icon: Icons.school_outlined,
+      return RefreshIndicator(
+        onRefresh: provider.refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.55,
+              child: EmptyView(
+                title: provider.status == 'COMPLETED'
+                    ? 'No completed courses'
+                    : 'No active courses',
+                message: provider.status == 'COMPLETED'
+                    ? 'Your completed courses will be collected here.'
+                    : 'Browse the catalog and enroll to start learning.',
+                icon: Icons.school_outlined,
+              ),
+            ),
+          ],
+        ),
       );
     }
     return RefreshIndicator(
       onRefresh: provider.refresh,
       child: ListView.builder(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
         itemCount: provider.enrollments.length + 1,
         itemBuilder: (context, index) {
           if (index == provider.enrollments.length) {
@@ -375,6 +420,17 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<QuizProvider>().load(widget.courseId);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AssignmentProvider>().loadCourse(
+          widget.courseId,
+          title: widget.title,
+        );
+      }
+    });
   }
 
   Future<void> _load() => context.read<LearningProvider>().load(
@@ -393,13 +449,62 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
             return const LoadingView(message: 'Loading curriculum...');
           }
           if (provider.errorMessage != null) {
-            return ErrorView(message: provider.errorMessage!, onRetry: _load);
+            return ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                ErrorView(message: provider.errorMessage!, onRetry: _load),
+                const SizedBox(height: 24),
+                const SectionHeader(
+                  title: 'Quizzes',
+                  subtitle: 'Check your understanding of the course.',
+                ),
+                const SizedBox(height: 12),
+                const CourseQuizzesSection(),
+                const SizedBox(height: 24),
+                const SectionHeader(
+                  title: 'Assignments',
+                  subtitle: 'Review your course work and due dates.',
+                ),
+                const SizedBox(height: 12),
+                AssignmentsScreenSection(
+                  courseId: widget.courseId,
+                  courseTitle: widget.title,
+                ),
+              ],
+            );
           }
           if (provider.sections.isEmpty) {
-            return const EmptyView(
-              title: 'No published lessons',
-              message: 'This course does not have a published curriculum yet.',
-              icon: Icons.menu_book_outlined,
+            return RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                children: [
+                  const EmptyView(
+                    title: 'No published lessons',
+                    message:
+                        'This course does not have a published curriculum yet.',
+                    icon: Icons.menu_book_outlined,
+                  ),
+                  const SizedBox(height: 24),
+                  const SectionHeader(
+                    title: 'Quizzes',
+                    subtitle: 'Check your understanding of the course.',
+                  ),
+                  const SizedBox(height: 12),
+                  const CourseQuizzesSection(),
+                  const SizedBox(height: 24),
+                  const SectionHeader(
+                    title: 'Assignments',
+                    subtitle: 'Review your course work and due dates.',
+                  ),
+                  const SizedBox(height: 12),
+                  AssignmentsScreenSection(
+                    courseId: widget.courseId,
+                    courseTitle: widget.title,
+                  ),
+                ],
+              ),
             );
           }
           return RefreshIndicator(
@@ -450,6 +555,23 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
                       },
                     ),
                   ),
+                const SizedBox(height: 24),
+                const SectionHeader(
+                  title: 'Quizzes',
+                  subtitle: 'Check your understanding of the course.',
+                ),
+                const SizedBox(height: 12),
+                const CourseQuizzesSection(),
+                const SizedBox(height: 24),
+                const SectionHeader(
+                  title: 'Assignments',
+                  subtitle: 'Review your course work and due dates.',
+                ),
+                const SizedBox(height: 12),
+                AssignmentsScreenSection(
+                  courseId: widget.courseId,
+                  courseTitle: widget.title,
+                ),
               ],
             ),
           );

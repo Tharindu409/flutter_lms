@@ -12,14 +12,20 @@ import 'package:flutter_lms/screens/profile/edit_profile_screen.dart';
 import 'package:flutter_lms/screens/profile/profile_screen.dart';
 import 'package:flutter_lms/screens/splash_screen.dart';
 import 'package:flutter_lms/screens/student_dashboard.dart';
+import 'package:flutter_lms/screens/notifications_screen.dart';
 import 'package:flutter_lms/screens/courses_screen.dart';
 import 'package:flutter_lms/screens/student_learning_screens.dart';
 import 'package:flutter_lms/providers/course_detail_provider.dart';
 import 'package:flutter_lms/providers/learning_provider.dart';
+import 'package:flutter_lms/providers/quiz_provider.dart';
+import 'package:flutter_lms/providers/assignment_provider.dart';
 import 'package:flutter_lms/services/api_client.dart';
 import 'package:flutter_lms/services/course_service.dart';
 import 'package:flutter_lms/services/enrollment_service.dart';
 import 'package:flutter_lms/services/learning_service.dart';
+import 'package:flutter_lms/services/quiz_service.dart';
+import 'package:flutter_lms/services/assignment_service.dart';
+import 'package:flutter_lms/screens/assignment_screens.dart';
 import 'package:provider/provider.dart';
 
 class AppRoutes {
@@ -41,6 +47,9 @@ class AppRoutes {
   static const myCourses = '/my-courses';
   static const curriculum = '/learning/curriculum';
   static const lesson = '/learning/lesson';
+  static const notifications = '/notifications';
+  static const assignments = '/assignments';
+  static const assignmentDetail = '/assignments/detail';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -57,6 +66,17 @@ class AppRoutes {
     profile: (_) => const ProfileScreen(),
     editProfile: (_) => const EditProfileScreen(),
     courses: (_) => const CoursesScreen(),
+    notifications: (_) => const NotificationsScreen(),
+    assignments: (context) => ChangeNotifierProvider<AssignmentProvider>(
+      create: (_) {
+        final apiClient = context.read<ApiClient>();
+        return AssignmentProvider(
+          AssignmentService(apiClient),
+          EnrollmentService(apiClient),
+        );
+      },
+      child: const AssignmentsScreen(),
+    ),
   };
 
   static Route<dynamic>? onGenerateRoute(RouteSettings settings) {
@@ -90,12 +110,25 @@ class AppRoutes {
           settings: settings,
           builder: (context) {
             final apiClient = context.read<ApiClient>();
-            return ChangeNotifierProvider<LearningProvider>(
-              create: (_) => LearningProvider(
-                CourseService(apiClient),
-                LearningService(apiClient),
-                EnrollmentService(apiClient),
-              ),
+            return MultiProvider(
+              providers: [
+                ChangeNotifierProvider<LearningProvider>(
+                  create: (_) => LearningProvider(
+                    CourseService(apiClient),
+                    LearningService(apiClient),
+                    EnrollmentService(apiClient),
+                  ),
+                ),
+                ChangeNotifierProvider<QuizProvider>(
+                  create: (_) => QuizProvider(QuizService(apiClient)),
+                ),
+                ChangeNotifierProvider<AssignmentProvider>(
+                  create: (_) => AssignmentProvider(
+                    AssignmentService(apiClient),
+                    EnrollmentService(apiClient),
+                  ),
+                ),
+              ],
               child: CurriculumScreen(
                 courseId: courseId,
                 title:
@@ -122,6 +155,22 @@ class AppRoutes {
               title: _stringArgument(arguments, 'title') ?? 'Lesson',
             ),
           ),
+        );
+      case assignmentDetail:
+        final assignmentId = _stringArgument(arguments, 'assignmentId');
+        if (assignmentId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<AssignmentProvider>(
+              create: (_) => AssignmentProvider(
+                AssignmentService(apiClient),
+                EnrollmentService(apiClient),
+              ),
+              child: AssignmentDetailScreen(assignmentId: assignmentId),
+            );
+          },
         );
       default:
         return null;
