@@ -3,16 +3,16 @@ import 'package:flutter_lms/models/course.dart';
 class Enrollment {
   final String id;
   final String courseId;
-  final String status; // ACTIVE, COMPLETED or CANCELLED
-  final double progressPercentage; // always the backend value
+  final String? status; // ACTIVE, COMPLETED or CANCELLED
+  final double? progressPercentage; // backend value, if supplied
   final Course? course;
   final DateTime? enrolledAt;
 
   const Enrollment({
     required this.id,
     required this.courseId,
-    required this.status,
-    this.progressPercentage = 0,
+    this.status,
+    this.progressPercentage,
     this.course,
     this.enrolledAt,
   });
@@ -35,9 +35,10 @@ class Enrollment {
     return Enrollment(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       courseId: courseId,
-      status: (json['status'] ?? '').toString().toUpperCase(),
-      progressPercentage:
-          double.tryParse(json['progressPercentage']?.toString() ?? '') ?? 0,
+      status: json['status']?.toString().toUpperCase(),
+      progressPercentage: double.tryParse(
+        json['progressPercentage']?.toString() ?? '',
+      ),
       course: courseJson == null ? null : Course.fromJson(courseJson),
       enrolledAt: DateTime.tryParse(
         (json['enrolledAt'] ?? json['createdAt'] ?? '').toString(),
