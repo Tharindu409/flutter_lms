@@ -8,6 +8,7 @@ import 'package:flutter_lms/services/api_client.dart';
 import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/api_guard.dart';
 import 'package:flutter_lms/utils/api_response.dart';
+import 'package:flutter_lms/utils/app_config.dart';
 import 'package:flutter_lms/utils/json_utils.dart';
 
 class CourseService {
@@ -23,7 +24,7 @@ class CourseService {
 
   Future<PagedResult<CourseCategory>> getCategories({
     int page = 1,
-    int limit = 50,
+    int limit = AppConfig.defaultPageSize,
   }) {
     return guardApi(() async {
       final response = await _dio.get<dynamic>(
@@ -42,10 +43,11 @@ class CourseService {
   /// Published courses only. Empty filters are not sent.
   Future<PagedResult<Course>> browseCourses({
     int page = 1,
-    int limit = 10,
+    int limit = AppConfig.defaultPageSize,
     String? search,
     String? categoryId,
     String? level,
+    String? language,
   }) {
     return guardApi(() async {
       final response = await _dio.get<dynamic>(
@@ -58,6 +60,7 @@ class CourseService {
           if (categoryId != null && categoryId.isNotEmpty)
             'categoryId': categoryId,
           if (level != null && level.isNotEmpty) 'level': level,
+          if (language != null && language.isNotEmpty) 'language': language,
         },
       );
       return PagedResult.fromData(
