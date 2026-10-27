@@ -8,31 +8,44 @@ class AuthInterceptor extends Interceptor {
     required this.dio,
     required this.tokenStorage,
     this.onSessionExpired,
+    this.refreshDioFactory,
   });
 
   final Dio dio;
   final TokenStorage tokenStorage;
-
-  /// Called when refresh fails so the UI can send the user back to Login.
   final void Function()? onSessionExpired;
+  final Dio Function(BaseOptions options)? refreshDioFactory;
 
   static const _authPrefix = '/api/v1/auth/';
-  static const _loginPath = '/api/v1/auth/login';
   static const _refreshPath = '/api/v1/auth/refresh-token';
-  static const _retriedKey = 'auth_retried';
+  static const _retriedKey = 'retried';
 
-  Future<bool>? _refreshing;
+  Future<String?>? _refreshing;
 
   @override
   Future<void> onRequest(
     RequestOptions options,
     RequestInterceptorHandler handler,
   ) async {
-    if (options.path != _loginPath && options.path != _refreshPath) {
-      final token = await tokenStorage.readAccessToken();
-      if (token != null && token.isNotEmpty) {
-        options.headers['Authorization'] = 'Bearer $token';
-      }
+    final isAuthCall = options.path.startsWith(_authPrefix);
+    final needsAuth =
+        !isAuthCall ||
+        options.path == '/api/v1/auth/logout' ||
+        options.path == '/api/v1/auth/logout-all';
+    final isPublicCatalog =
+        options.path == '/api/v1/categories' ||
+        options.path == '/api/v1/courses';
+    if (!needsAuth || isPublicCatalog) {
+      options.headers.remove('Authorization');
+      handler.next(options);
+      return;
+    }
+
+    final token = await tokenStorage.readAccessToken();
+    if (token != null && token.trim().isNotEmpty) {
+      options.headers['Authorization'] = _bearerHeader(token);
+    } else {
+      options.headers.remove('Authorization');
     }
     handler.next(options);
   }
@@ -46,23 +59,22 @@ class AuthInterceptor extends Interceptor {
     final isUnauthorized = err.response?.statusCode == 401;
     final isAuthCall = options.path.startsWith(_authPrefix);
     final alreadyRetried = options.extra[_retriedKey] == true;
-
-    // No refresh for login/verify/refresh calls, and never retry twice.
     if (!isUnauthorized || isAuthCall || alreadyRetried) {
-      return handler.next(err);
+      handler.next(err);
+      return;
     }
 
-    // If several requests fail together, only one refresh runs.
-    final refreshed = await (_refreshing ??= _refreshTokens().whenComplete(
+    final accessToken = await (_refreshing ??= _refreshTokens().whenComplete(
       () => _refreshing = null,
     ));
-
-    if (!refreshed) return handler.next(err);
+    if (accessToken == null || accessToken.isEmpty) {
+      handler.next(err);
+      return;
+    }
 
     try {
       options.extra[_retriedKey] = true;
-      final token = await tokenStorage.readAccessToken();
-      options.headers['Authorization'] = 'Bearer $token';
+      options.headers['Authorization'] = _bearerHeader(accessToken);
       if (options.data is FormData) {
         options.data = (options.data as FormData).clone();
       }
@@ -73,41 +85,47 @@ class AuthInterceptor extends Interceptor {
     }
   }
 
-  Future<bool> _refreshTokens() async {
-    final refreshToken = await tokenStorage.readRefreshToken();
-    if (refreshToken == null || refreshToken.isEmpty) {
-      await _expireSession();
-      return false;
-    }
-
+  Future<String?> _refreshTokens() async {
     try {
-      // Separate Dio without interceptors, so refresh can never loop.
-      final refreshDio = Dio(
-        BaseOptions(
-          baseUrl: AppConfig.baseUrl,
-          connectTimeout: AppConfig.connectTimeout,
-          receiveTimeout: AppConfig.receiveTimeout,
-        ),
-      );
-      final response = await refreshDio.post<dynamic>(
-        _refreshPath,
-        data: {'refreshToken': refreshToken},
-      );
+      final refreshToken = await tokenStorage.readRefreshToken();
+      if (refreshToken == null || refreshToken.isEmpty) {
+        await _expireSession();
+        return null;
+      }
 
-      final data = ApiResponse.data(response) as Map<String, dynamic>;
-      final tokens = data['tokens'] as Map<String, dynamic>;
-      final role = await tokenStorage.readRole() ?? '';
-
-      // Both tokens are replaced (refresh token rotation).
-      await tokenStorage.saveSession(
-        accessToken: tokens['accessToken'] as String,
-        refreshToken: tokens['refreshToken'] as String,
-        role: role,
+      final options = BaseOptions(
+        baseUrl: AppConfig.baseUrl,
+        connectTimeout: AppConfig.connectTimeout,
+        receiveTimeout: AppConfig.receiveTimeout,
       );
-      return true;
-    } catch (_) {
+      final refreshDio = refreshDioFactory?.call(options) ?? Dio(options);
+      try {
+        final response = await refreshDio.post<dynamic>(
+          _refreshPath,
+          data: {'refreshToken': refreshToken},
+        );
+        final data = ApiResponse.data(response);
+        final tokens = data is Map<String, dynamic> ? data['tokens'] : null;
+        if (tokens is! Map<String, dynamic>) {
+          throw const FormatException('Invalid token response');
+        }
+        final accessToken = tokens['accessToken']?.toString().trim() ?? '';
+        final newRefreshToken = tokens['refreshToken']?.toString().trim() ?? '';
+        if (accessToken.isEmpty || newRefreshToken.isEmpty) {
+          throw const FormatException('Missing refreshed tokens');
+        }
+        await tokenStorage.saveSession(
+          accessToken: accessToken,
+          refreshToken: newRefreshToken,
+          role: await tokenStorage.readRole() ?? '',
+        );
+        return accessToken;
+      } finally {
+        refreshDio.close(force: true);
+      }
+    } on Exception {
       await _expireSession();
-      return false;
+      return null;
     }
   }
 
@@ -115,4 +133,6 @@ class AuthInterceptor extends Interceptor {
     await tokenStorage.clear();
     onSessionExpired?.call();
   }
+
+  String _bearerHeader(String token) => ['Bearer', token.trim()].join(' ');
 }

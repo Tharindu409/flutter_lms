@@ -5,12 +5,14 @@ class ApiException implements Exception {
   final String message;
   final String? errorCode;
   final dynamic details;
+  final String? backendMessage;
 
   const ApiException({
     this.statusCode,
     required this.message,
     this.errorCode,
     this.details,
+    this.backendMessage,
   });
 
   factory ApiException.fromDioException(DioException error) {
@@ -23,8 +25,7 @@ class ApiException implements Exception {
         );
       case DioExceptionType.connectionError:
         return const ApiException(
-          message:
-              'Cannot reach the server. Check that the backend is running and your connection is working.',
+          message: 'Cannot reach the server. Check that the backend is running and your connection is working.',
         );
       case DioExceptionType.cancel:
         return const ApiException(message: 'The request was cancelled.');
@@ -50,22 +51,58 @@ class ApiException implements Exception {
       details = body['details'] ?? body['errors'];
     }
 
-    // Never show raw server errors for 5xx responses.
-    final isServerError = status != null && status >= 500;
+    final safeMessage = _defaultMessage(status);
     return ApiException(
       statusCode: status,
-      message: (isServerError || message == null || message.isEmpty)
-          ? _defaultMessage(status)
-          : message,
+      message: safeMessage,
       errorCode: code,
       details: details,
+      backendMessage: message,
+    );
+  }
+
+  static ApiException forEnrollment(ApiException error) {
+    final backendText = error.backendMessage?.toLowerCase() ?? '';
+    final code = error.errorCode?.toUpperCase() ?? '';
+    if (error.statusCode == 403) {
+      return ApiException(
+        statusCode: error.statusCode,
+        message: 'Your account is not allowed to enroll in this course.',
+      );
+    }
+    final alreadyEnrolled =
+        error.statusCode == 409 ||
+        code.contains('DUPLICATE') ||
+        code.contains('ALREADY_ENROLLED') ||
+        backendText.contains('already enrolled') ||
+        (backendText.contains('duplicate') && backendText.contains('enroll')) ||
+        backendText.contains('enrollment already exists');
+
+    if (alreadyEnrolled) {
+      return ApiException(
+        statusCode: error.statusCode,
+        message: 'You are already enrolled in this course.',
+        errorCode: 'ENROLLMENT_ALREADY_EXISTS',
+        details: error.details,
+        backendMessage: error.backendMessage,
+      );
+    }
+    if (error.statusCode == 400 || error.statusCode == 404) {
+      return ApiException(
+        statusCode: error.statusCode,
+        message: 'This course is not available for enrollment.',
+      );
+    }
+    return ApiException(
+      statusCode: error.statusCode,
+      message: 'Unable to enroll right now. Please check your connection and try again.',
     );
   }
 
   static String _defaultMessage(int? status) {
     switch (status) {
       case 400:
-        return 'Invalid request. Please check your input.';
+        return 'The request could not be completed. Please check and try again.';
       case 401:
         return 'Your session has expired. Please log in again.';
       case 403:
