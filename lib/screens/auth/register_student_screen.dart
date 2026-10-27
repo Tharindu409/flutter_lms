@@ -86,6 +86,7 @@ class _RegisterStudentScreenState extends State<RegisterStudentScreen> {
   }
 
   Future<void> _submit() async {
+    if (_loading) return;
     if (!_formKey.currentState!.validate()) return;
     final service = context.read<AuthService>();
     final email = _email.text.trim();
