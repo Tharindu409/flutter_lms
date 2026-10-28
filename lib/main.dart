@@ -68,7 +68,6 @@ void main() {
       catalogProvider.reset();
       myCoursesProvider.reset();
       notificationProvider.reset();
-      learningProvider.reset();
       instructorDashboardProvider.reset();
       instructorCoursesProvider.reset();
     } else if (!wasLoggedIn) {

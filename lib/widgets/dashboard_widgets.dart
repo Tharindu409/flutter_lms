@@ -12,8 +12,6 @@ import 'package:provider/provider.dart';
 class DashboardScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
-  final String title;
-  final List<Widget> children;
   final Future<void> Function()? onRefresh;
 
   const DashboardScaffold({
@@ -79,11 +77,8 @@ class DashboardScaffold extends StatelessWidget {
           ),
         ],
       ),
-           body: onRefresh == null
-          ? ListView(
-              padding: const EdgeInsets.all(16),
-              children: children,
-            )
+      body: onRefresh == null
+          ? ListView(padding: const EdgeInsets.all(16), children: children)
           : RefreshIndicator(
               onRefresh: onRefresh!,
               child: ListView(
