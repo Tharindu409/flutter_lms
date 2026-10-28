@@ -30,6 +30,42 @@ class InstructorLessonService {
     });
   }
 
+  Future<void> createSection(String courseId, Map<String, dynamic> body) {
+    return _run(() async {
+      await _dio.post<dynamic>(
+        '/api/v1/courses/$courseId/sections',
+        data: body,
+      );
+    });
+  }
+
+  Future<void> updateSection(
+    String sectionId,
+    Map<String, dynamic> changedFields,
+  ) {
+    return _run(() async {
+      await _dio.patch<dynamic>(
+        '/api/v1/sections/$sectionId',
+        data: changedFields,
+      );
+    });
+  }
+
+  Future<void> reorderSection(String sectionId, int order) {
+    return _run(() async {
+      await _dio.patch<dynamic>(
+        '/api/v1/sections/$sectionId/reorder',
+        data: {'order': order},
+      );
+    });
+  }
+
+  Future<void> deleteSection(String sectionId) {
+    return _run(() async {
+      await _dio.delete<dynamic>('/api/v1/sections/$sectionId');
+    });
+  }
+
   Future<List<Lesson>> getSectionLessons(String sectionId) {
     return _run(() async {
       final response = await _dio.get<dynamic>(

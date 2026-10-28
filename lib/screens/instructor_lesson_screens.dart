@@ -344,6 +344,7 @@ class _InstructorLessonsScreenState extends State<InstructorLessonsScreen> {
         ),
       );
     }
+    final dashboardProvider = context.read<InstructorDashboardProvider>();
     return Scaffold(
       appBar: AppBar(title: Text(widget.sectionTitle)),
       floatingActionButton: Consumer<InstructorLessonProvider>(
@@ -411,6 +412,7 @@ class _InstructorLessonsScreenState extends State<InstructorLessonsScreen> {
                       provider: provider,
                       onEdit: () => _editLesson(provider.lessons[index]),
                       onActionError: _showMessage,
+                      onMutationComplete: dashboardProvider.load,
                     ),
                   ),
                 ),
@@ -424,6 +426,7 @@ class _InstructorLessonsScreenState extends State<InstructorLessonsScreen> {
 
   Future<void> _openForm({Lesson? lesson}) async {
     final provider = context.read<InstructorLessonProvider>();
+    final dashboardProvider = context.read<InstructorDashboardProvider>();
     await Navigator.push<void>(
       context,
       MaterialPageRoute<void>(
@@ -433,6 +436,7 @@ class _InstructorLessonsScreenState extends State<InstructorLessonsScreen> {
         ),
       ),
     );
+    if (mounted) await dashboardProvider.load();
   }
 
   Future<void> _editLesson(Lesson lesson) async {
@@ -461,6 +465,7 @@ class _LessonTile extends StatelessWidget {
     required this.provider,
     required this.onEdit,
     required this.onActionError,
+    required this.onMutationComplete,
   });
 
   final Lesson lesson;
@@ -469,13 +474,18 @@ class _LessonTile extends StatelessWidget {
   final InstructorLessonProvider provider;
   final VoidCallback onEdit;
   final ValueChanged<String> onActionError;
+  final Future<void> Function() onMutationComplete;
 
   Future<void> _publish(BuildContext context) async {
     final error = await provider.setPublished(
       lesson,
       lesson.isPublished != true,
     );
-    if (error != null && context.mounted) onActionError(error);
+    if (error != null) {
+      if (context.mounted) onActionError(error);
+    } else {
+      await onMutationComplete();
+    }
   }
 
   Future<void> _delete(BuildContext context) async {
@@ -487,7 +497,11 @@ class _LessonTile extends StatelessWidget {
     );
     if (!context.mounted || !confirmed) return;
     final error = await provider.deleteLesson(lesson.id);
-    if (error != null && context.mounted) onActionError(error);
+    if (error != null) {
+      if (context.mounted) onActionError(error);
+    } else {
+      await onMutationComplete();
+    }
   }
 
   Future<void> _move(BuildContext context, int direction) async {
@@ -495,7 +509,11 @@ class _LessonTile extends StatelessWidget {
       lesson.id,
       index + direction + 1,
     );
-    if (error != null && context.mounted) onActionError(error);
+    if (error != null) {
+      if (context.mounted) onActionError(error);
+    } else {
+      await onMutationComplete();
+    }
   }
 
   @override

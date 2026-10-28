@@ -9,7 +9,7 @@ class InstructorCoursesProvider extends ChangeNotifier {
 
   final InstructorCourseService _service;
 
-  static const pageSize = 10;
+  static const pageSize = 20;
 
   List<Course> courses = [];
   String? status; // null shows every status
@@ -27,13 +27,20 @@ class InstructorCoursesProvider extends ChangeNotifier {
 
   int _page = 1;
   int _requestId = 0;
+  bool _disposed = false;
+  double? thumbnailUploadProgress;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
 
   Future<void> refresh() async {
     final request = ++_requestId;
     isLoading = true;
+    isLoadingMore = false;
     errorMessage = null;
     loadMoreError = null;
-    notifyListeners();
+    _notify();
 
     try {
       final result = await _service.getMyCourses(
@@ -42,19 +49,19 @@ class InstructorCoursesProvider extends ChangeNotifier {
         status: status,
         search: search,
       );
-      if (request != _requestId) return;
+      if (_disposed || request != _requestId) return;
       courses = result.items;
       _page = result.page;
       hasMore = result.hasMore;
     } on ApiException catch (error) {
-      if (request != _requestId) return;
+      if (_disposed || request != _requestId) return;
       courses = [];
       hasMore = false;
       errorMessage = error.message;
     } finally {
-      if (request == _requestId) {
+      if (!_disposed && request == _requestId) {
         isLoading = false;
-        notifyListeners();
+        _notify();
       }
     }
   }
@@ -65,7 +72,7 @@ class InstructorCoursesProvider extends ChangeNotifier {
     final request = _requestId;
     isLoadingMore = true;
     loadMoreError = null;
-    notifyListeners();
+    _notify();
 
     try {
       final result = await _service.getMyCourses(
@@ -74,16 +81,18 @@ class InstructorCoursesProvider extends ChangeNotifier {
         status: status,
         search: search,
       );
-      if (request == _requestId) {
+      if (!_disposed && request == _requestId) {
         courses = [...courses, ...result.items];
         _page = result.page;
         hasMore = result.hasMore;
       }
     } on ApiException catch (error) {
-      if (request == _requestId) loadMoreError = error.message;
+      if (!_disposed && request == _requestId) loadMoreError = error.message;
     } finally {
-      isLoadingMore = false;
-      notifyListeners();
+      if (!_disposed && request == _requestId) {
+        isLoadingMore = false;
+        _notify();
+      }
     }
   }
 
@@ -115,7 +124,23 @@ class InstructorCoursesProvider extends ChangeNotifier {
   }
 
   Future<String?> uploadThumbnail(String courseId, XFile file) {
-    return _runBusy(() => _service.uploadThumbnail(courseId, file));
+    thumbnailUploadProgress = 0;
+    _notify();
+    return _runBusy(
+      () => _service.uploadThumbnail(
+        courseId,
+        file,
+        onSendProgress: (sent, total) {
+          if (_disposed || total <= 0) return;
+          thumbnailUploadProgress = (sent / total).clamp(0, 1).toDouble();
+          _notify();
+        },
+      ),
+    ).whenComplete(() {
+      if (_disposed) return;
+      thumbnailUploadProgress = null;
+      _notify();
+    });
   }
 
   Future<String?> removeThumbnail(String courseId) {
@@ -131,21 +156,25 @@ class InstructorCoursesProvider extends ChangeNotifier {
   }
 
   Future<String?> _runBusy(Future<void> Function() action) async {
+    if (_disposed) return null;
+    if (isBusy) return 'Please wait for the current action to finish.';
     isBusy = true;
-    notifyListeners();
+    _notify();
 
     try {
       await action();
+      if (!_disposed) await refresh();
+      return null;
     } on ApiException catch (error) {
-      isBusy = false;
-      notifyListeners();
       return error.message;
+    } catch (_) {
+      return 'Unable to complete this action. Please try again.';
+    } finally {
+      if (!_disposed) {
+        isBusy = false;
+        _notify();
+      }
     }
-
-    await refresh(); // keep the list in sync with the backend
-    isBusy = false;
-    notifyListeners();
-    return null;
   }
 
   void reset() {
@@ -160,7 +189,15 @@ class InstructorCoursesProvider extends ChangeNotifier {
     loadMoreError = null;
     hasMore = false;
     lastCreated = null;
+    thumbnailUploadProgress = null;
     _page = 1;
-    notifyListeners();
+    _notify();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _requestId++;
+    super.dispose();
   }
 }

@@ -27,11 +27,11 @@ import 'package:flutter_lms/services/quiz_service.dart';
 import 'package:flutter_lms/services/assignment_service.dart';
 import 'package:flutter_lms/services/instructor_lesson_service.dart';
 import 'package:flutter_lms/screens/assignment_screens.dart';
-import 'package:flutter_lms/screens/instructor_lesson_screens.dart';
 import 'package:flutter_lms/screens/instructor_quiz_screens.dart';
 import 'package:flutter_lms/providers/instructor_quiz_provider.dart';
 import 'package:flutter_lms/services/instructor_quiz_service.dart';
 import 'package:flutter_lms/screens/instructor_assignment_screens.dart';
+import 'package:flutter_lms/screens/instructor_course_screens.dart';
 import 'package:flutter_lms/providers/instructor_assignment_provider.dart';
 import 'package:flutter_lms/services/instructor_assignment_service.dart';
 import 'package:provider/provider.dart';
@@ -59,6 +59,7 @@ class AppRoutes {
   static const assignments = '/assignments';
   static const assignmentDetail = '/assignments/detail';
   static const instructorLessonCourses = '/instructor/lessons';
+  static const instructorCourses = '/instructor/courses';
   static const instructorQuizzes = '/instructor/course-quizzes';
   static const instructorAssignments = '/instructor/course-assignments';
 
@@ -78,7 +79,8 @@ class AppRoutes {
     editProfile: (_) => const EditProfileScreen(),
     courses: (_) => const CoursesScreen(),
     notifications: (_) => const NotificationsScreen(),
-    instructorLessonCourses: (_) => const InstructorLessonCoursesScreen(),
+    instructorLessonCourses: (_) => const InstructorCoursesScreen(),
+    instructorCourses: (_) => const InstructorCoursesScreen(),
     assignments: (context) => ChangeNotifierProvider<AssignmentProvider>(
       create: (_) {
         final apiClient = context.read<ApiClient>();

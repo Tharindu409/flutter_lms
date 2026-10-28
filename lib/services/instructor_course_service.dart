@@ -90,7 +90,11 @@ class InstructorCourseService {
   }
 
   /// Multipart field name must be exactly "thumbnail".
-  Future<void> uploadThumbnail(String courseId, XFile file) {
+  Future<void> uploadThumbnail(
+    String courseId,
+    XFile file, {
+    ProgressCallback? onSendProgress,
+  }) {
     return guardApi<void>(() async {
       final form = FormData.fromMap({
         'thumbnail': await UploadHelper.imagePart(file),
@@ -98,6 +102,7 @@ class InstructorCourseService {
       await _dio.post<dynamic>(
         '/api/v1/courses/$courseId/thumbnail',
         data: form,
+        onSendProgress: onSendProgress,
       );
     });
   }

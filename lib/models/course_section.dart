@@ -24,6 +24,8 @@ class CourseSection {
       lessonCount: _lessonCount(json),
       isPublished: json['isPublished'] is bool
           ? json['isPublished'] as bool
+          : json['status']?.toString().toUpperCase() == 'DRAFT'
+          ? false
           : true,
     );
   }

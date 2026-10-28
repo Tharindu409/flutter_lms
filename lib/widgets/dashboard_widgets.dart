@@ -13,12 +13,14 @@ class DashboardScaffold extends StatelessWidget {
   final String title;
   final List<Widget> children;
   final Future<void> Function()? onRefresh;
+  final Widget? bottomNavigationBar;
 
   const DashboardScaffold({
     super.key,
     required this.title,
     required this.children,
     this.onRefresh,
+    this.bottomNavigationBar,
   });
 
   Future<void> _confirmLogout(BuildContext context) async {
@@ -87,6 +89,7 @@ class DashboardScaffold extends StatelessWidget {
                 children: children,
               ),
             ),
+      bottomNavigationBar: bottomNavigationBar,
     );
   }
 }
