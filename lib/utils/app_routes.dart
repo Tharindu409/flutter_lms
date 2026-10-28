@@ -25,8 +25,15 @@ import 'package:flutter_lms/services/enrollment_service.dart';
 import 'package:flutter_lms/services/learning_service.dart';
 import 'package:flutter_lms/services/quiz_service.dart';
 import 'package:flutter_lms/services/assignment_service.dart';
+import 'package:flutter_lms/services/instructor_lesson_service.dart';
 import 'package:flutter_lms/screens/assignment_screens.dart';
 import 'package:flutter_lms/screens/instructor_lesson_screens.dart';
+import 'package:flutter_lms/screens/instructor_quiz_screens.dart';
+import 'package:flutter_lms/providers/instructor_quiz_provider.dart';
+import 'package:flutter_lms/services/instructor_quiz_service.dart';
+import 'package:flutter_lms/screens/instructor_assignment_screens.dart';
+import 'package:flutter_lms/providers/instructor_assignment_provider.dart';
+import 'package:flutter_lms/services/instructor_assignment_service.dart';
 import 'package:provider/provider.dart';
 
 class AppRoutes {
@@ -52,6 +59,8 @@ class AppRoutes {
   static const assignments = '/assignments';
   static const assignmentDetail = '/assignments/detail';
   static const instructorLessonCourses = '/instructor/lessons';
+  static const instructorQuizzes = '/instructor/course-quizzes';
+  static const instructorAssignments = '/instructor/course-assignments';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -172,6 +181,46 @@ class AppRoutes {
                 EnrollmentService(apiClient),
               ),
               child: AssignmentDetailScreen(assignmentId: assignmentId),
+            );
+          },
+        );
+      case instructorQuizzes:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<InstructorQuizProvider>(
+              create: (_) => InstructorQuizProvider(
+                InstructorQuizService(apiClient),
+                InstructorLessonService(apiClient),
+              ),
+              child: InstructorCourseQuizzesScreen(
+                courseId: courseId,
+                courseTitle:
+                    _stringArgument(arguments, 'courseTitle') ?? 'Course',
+              ),
+            );
+          },
+        );
+      case instructorAssignments:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<InstructorAssignmentProvider>(
+              create: (_) => InstructorAssignmentProvider(
+                InstructorAssignmentService(apiClient),
+                InstructorLessonService(apiClient),
+              ),
+              child: InstructorCourseAssignmentsScreen(
+                courseId: courseId,
+                courseTitle:
+                    _stringArgument(arguments, 'courseTitle') ?? 'Course',
+              ),
             );
           },
         );

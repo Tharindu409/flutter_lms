@@ -7,10 +7,12 @@ import 'package:flutter_lms/models/course.dart';
 import 'package:flutter_lms/models/lesson.dart';
 import 'package:flutter_lms/providers/auth_provider.dart';
 import 'package:flutter_lms/providers/instructor_courses_provider.dart';
+import 'package:flutter_lms/providers/instructor_dashboard_provider.dart';
 import 'package:flutter_lms/providers/instructor_lesson_provider.dart';
 import 'package:flutter_lms/services/instructor_lesson_service.dart';
 import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
+import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/upload_helper.dart';
 import 'package:flutter_lms/widgets/confirm_dialog.dart';
 import 'package:flutter_lms/widgets/state_views.dart';
@@ -104,6 +106,9 @@ class _InstructorLessonCoursesScreenState
                       ),
                     ),
                   ),
+                  onArchive: course.status.toUpperCase() == 'ARCHIVED'
+                      ? null
+                      : () => _archiveCourse(course),
                 );
               },
             ),
@@ -112,13 +117,44 @@ class _InstructorLessonCoursesScreenState
       ),
     );
   }
+
+  Future<void> _archiveCourse(Course course) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Archive course?',
+      message:
+          'Students will keep their access, but new enrollments will stop.',
+      confirmLabel: 'Archive',
+    );
+    if (!mounted || !confirmed) return;
+    final provider = context.read<InstructorCoursesProvider>();
+    final error = await provider.archiveCourse(course.id);
+    if (!mounted) return;
+    if (error != null) {
+      _showMessage(error);
+      return;
+    }
+    await context.read<InstructorDashboardProvider>().load();
+    if (mounted) _showMessage('Course archived.');
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 }
 
 class _CourseTile extends StatelessWidget {
-  const _CourseTile({required this.course, required this.onTap});
+  const _CourseTile({
+    required this.course,
+    required this.onTap,
+    this.onArchive,
+  });
 
   final Course course;
   final VoidCallback onTap;
+  final VoidCallback? onArchive;
 
   @override
   Widget build(BuildContext context) {
@@ -131,7 +167,25 @@ class _CourseTile extends StatelessWidget {
         ),
         title: Text(course.title),
         subtitle: Text(course.status),
-        trailing: const Icon(Icons.chevron_right),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (onArchive != null)
+              PopupMenuButton<String>(
+                tooltip: 'Course actions',
+                onSelected: (value) {
+                  if (value == 'archive') onArchive?.call();
+                },
+                itemBuilder: (_) => const [
+                  PopupMenuItem(
+                    value: 'archive',
+                    child: Text('Archive course'),
+                  ),
+                ],
+              ),
+            const Icon(Icons.chevron_right),
+          ],
+        ),
       ),
     );
   }
@@ -158,7 +212,29 @@ class InstructorSectionsScreen extends StatelessWidget {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: Text(courseTitle)),
+      appBar: AppBar(
+        title: Text(courseTitle),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.instructorQuizzes,
+              arguments: {'courseId': courseId, 'courseTitle': courseTitle},
+            ),
+            icon: const Icon(Icons.quiz_outlined),
+            label: const Text('Quizzes'),
+          ),
+          IconButton(
+            tooltip: 'Assignments',
+            onPressed: () => Navigator.pushNamed(
+              context,
+              AppRoutes.instructorAssignments,
+              arguments: {'courseId': courseId, 'courseTitle': courseTitle},
+            ),
+            icon: const Icon(Icons.assignment_outlined),
+          ),
+        ],
+      ),
       body: Consumer<InstructorLessonProvider>(
         builder: (context, provider, _) {
           if (provider.isLoadingSections && provider.sections.isEmpty) {
