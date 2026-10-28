@@ -10,7 +10,7 @@ class Lesson {
   final String? documentName;
   final int durationMinutes;
   final bool isPreview;
-  final bool isPublished;
+  final bool? isPublished;
   final int order;
 
   const Lesson({
@@ -25,7 +25,7 @@ class Lesson {
     this.documentName,
     this.durationMinutes = 0,
     this.isPreview = false,
-    this.isPublished = true,
+    this.isPublished,
     this.order = 0,
   });
 
@@ -33,6 +33,7 @@ class Lesson {
     final document = json['document'];
 
     String? documentName =
+        json['documentFileName']?.toString() ??
         json['documentName']?.toString() ??
         json['originalFilename']?.toString();
     if (documentName == null && document is Map) {
@@ -60,7 +61,7 @@ class Lesson {
       isPreview: json['isPreview'] == true,
       isPublished: json['isPublished'] is bool
           ? json['isPublished'] as bool
-          : true,
+          : null,
       order: int.tryParse(json['order']?.toString() ?? '') ?? 0,
     );
   }
@@ -68,6 +69,7 @@ class Lesson {
   bool get isText => lessonType == 'TEXT';
   bool get isVideo => lessonType == 'VIDEO';
   bool get isDocument => lessonType == 'DOCUMENT';
+  String? get documentFileName => documentName;
 
   String get durationLabel => durationMinutes > 0 ? '$durationMinutes min' : '';
 

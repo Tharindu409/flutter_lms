@@ -99,6 +99,9 @@ void main() {
         ChangeNotifierProvider<InstructorDashboardProvider>.value(
           value: instructorDashboardProvider,
         ),
+        ChangeNotifierProvider<InstructorCoursesProvider>.value(
+          value: instructorCoursesProvider,
+        ),
       ],
       child: const MyApp(),
     ),

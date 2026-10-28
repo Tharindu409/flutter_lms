@@ -26,6 +26,7 @@ import 'package:flutter_lms/services/learning_service.dart';
 import 'package:flutter_lms/services/quiz_service.dart';
 import 'package:flutter_lms/services/assignment_service.dart';
 import 'package:flutter_lms/screens/assignment_screens.dart';
+import 'package:flutter_lms/screens/instructor_lesson_screens.dart';
 import 'package:provider/provider.dart';
 
 class AppRoutes {
@@ -50,6 +51,7 @@ class AppRoutes {
   static const notifications = '/notifications';
   static const assignments = '/assignments';
   static const assignmentDetail = '/assignments/detail';
+  static const instructorLessonCourses = '/instructor/lessons';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -67,6 +69,7 @@ class AppRoutes {
     editProfile: (_) => const EditProfileScreen(),
     courses: (_) => const CoursesScreen(),
     notifications: (_) => const NotificationsScreen(),
+    instructorLessonCourses: (_) => const InstructorLessonCoursesScreen(),
     assignments: (context) => ChangeNotifierProvider<AssignmentProvider>(
       create: (_) {
         final apiClient = context.read<ApiClient>();

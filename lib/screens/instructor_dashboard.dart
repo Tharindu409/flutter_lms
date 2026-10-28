@@ -3,6 +3,7 @@ import 'package:flutter_lms/models/dashboard_models.dart';
 import 'package:flutter_lms/models/instructor_summary.dart';
 import 'package:flutter_lms/providers/auth_provider.dart';
 import 'package:flutter_lms/providers/instructor_dashboard_provider.dart';
+import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/widgets/dashboard_widgets.dart';
 import 'package:flutter_lms/widgets/state_views.dart';
 import 'package:provider/provider.dart';
@@ -86,6 +87,15 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
             GreetingHeader(
               greeting: 'Hello, ${name ?? 'Instructor'}',
               subtitle: 'Manage your courses and learners.',
+            ),
+            const SizedBox(height: 20),
+            FilledButton.icon(
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.instructorLessonCourses,
+              ),
+              icon: const Icon(Icons.play_lesson_outlined),
+              label: const Text('Manage course lessons'),
             ),
             const SizedBox(height: 20),
             if (summary != null)
