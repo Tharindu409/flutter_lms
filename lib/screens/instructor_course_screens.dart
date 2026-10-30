@@ -4,35 +4,31 @@ import 'package:flutter/material.dart';
 import 'package:flutter_lms/models/course.dart';
 import 'package:flutter_lms/models/course_category.dart';
 import 'package:flutter_lms/models/course_section.dart';
-import 'package:flutter_lms/providers/instructor_assignment_provider.dart';
 import 'package:flutter_lms/providers/auth_provider.dart';
 import 'package:flutter_lms/providers/instructor_courses_provider.dart';
 import 'package:flutter_lms/providers/instructor_dashboard_provider.dart';
 import 'package:flutter_lms/providers/instructor_lesson_provider.dart';
-import 'package:flutter_lms/services/api_client.dart';
+import 'package:flutter_lms/screens/instructor_lesson_screens.dart';
 import 'package:flutter_lms/services/course_service.dart';
-import 'package:flutter_lms/services/instructor_assignment_service.dart';
-import 'package:flutter_lms/services/instructor_lesson_service.dart';
-import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_lms/utils/app_routes.dart';
 import 'package:flutter_lms/utils/app_theme.dart';
+import 'package:flutter_lms/utils/api_exception.dart';
+import 'package:flutter_lms/utils/upload_helper.dart';
 import 'package:flutter_lms/widgets/confirm_dialog.dart';
 import 'package:flutter_lms/widgets/section_header.dart';
 import 'package:flutter_lms/widgets/state_views.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_lms/screens/instructor_assignment_screens.dart';
-import 'package:flutter_lms/screens/instructor_lesson_screens.dart';
 
-class InstructorCoursesScreen extends StatefulWidget {
-  const InstructorCoursesScreen({super.key});
+class InstructorMyCoursesScreen extends StatefulWidget {
+  const InstructorMyCoursesScreen({super.key});
 
   @override
-  State<InstructorCoursesScreen> createState() =>
-      _InstructorCoursesScreenState();
+  State<InstructorMyCoursesScreen> createState() =>
+      _InstructorMyCoursesScreenState();
 }
 
-class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
+class _InstructorMyCoursesScreenState extends State<InstructorMyCoursesScreen> {
   static const _statuses = [
     (null, 'All'),
     ('DRAFT', 'Draft'),
@@ -66,22 +62,41 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
   Widget build(BuildContext context) {
     if (!_isInstructor) {
       return Scaffold(
-        appBar: AppBar(title: const Text('My Courses')),
+        appBar: AppBar(title: const Text('My courses')),
         body: const ErrorView(message: 'Only instructors can manage courses.'),
       );
     }
-
-    return Consumer<InstructorCoursesProvider>(
-      builder: (context, provider, _) => Scaffold(
-        appBar: AppBar(title: const Text('My Courses')),
-        body: Column(
+    return Scaffold(
+      appBar: AppBar(title: const Text('My courses')),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _createCourse,
+        icon: const Icon(Icons.add),
+        label: const Text('Create course'),
+      ),
+      body: Consumer<InstructorCoursesProvider>(
+        builder: (context, provider, _) => Column(
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
                 controller: _searchController,
-                textInputAction: TextInputAction.search,
+                decoration: InputDecoration(
+                  hintText: 'Search your courses',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isEmpty
+                      ? null
+                      : IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            provider.setSearch('');
+                            setState(() {});
+                          },
+                          icon: const Icon(Icons.clear),
+                        ),
+                  border: const OutlineInputBorder(),
+                ),
                 onChanged: (value) {
+                  setState(() {});
                   _searchDebounce?.cancel();
                   _searchDebounce = Timer(
                     const Duration(milliseconds: 350),
@@ -90,21 +105,6 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
                     },
                   );
                 },
-                decoration: InputDecoration(
-                  hintText: 'Search your courses',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: _searchController.text.isEmpty
-                      ? null
-                      : IconButton(
-                          tooltip: 'Clear search',
-                          onPressed: () {
-                            _searchController.clear();
-                            provider.setSearch('');
-                          },
-                          icon: const Icon(Icons.close),
-                        ),
-                  border: const OutlineInputBorder(),
-                ),
               ),
             ),
             SizedBox(
@@ -113,14 +113,14 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 children: [
-                  for (final (status, label) in _statuses)
+                  for (final entry in _statuses)
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: ChoiceChip(
-                        label: Text(label),
-                        selected: provider.status == status,
+                        label: Text(entry.$2),
+                        selected: provider.status == entry.$1,
                         onSelected: (selected) {
-                          if (selected) provider.setStatus(status);
+                          if (selected) provider.setStatus(entry.$1);
                         },
                       ),
                     ),
@@ -128,39 +128,6 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
               ),
             ),
             Expanded(child: _courseList(provider)),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: provider.isBusy ? null : () => _createCourse(provider),
-          icon: const Icon(Icons.add),
-          label: const Text('Create course'),
-        ),
-        bottomNavigationBar: NavigationBar(
-          selectedIndex: 1,
-          onDestinationSelected: (index) {
-            if (index == 0) {
-              Navigator.pushNamedAndRemoveUntil(
-                context,
-                AppRoutes.instructorDashboard,
-                (route) => false,
-              );
-            } else if (index == 2) {
-              Navigator.pushNamed(context, AppRoutes.profile);
-            }
-          },
-          destinations: const [
-            NavigationDestination(
-              icon: Icon(Icons.dashboard_outlined),
-              label: 'Dashboard',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.menu_book_outlined),
-              label: 'My Courses',
-            ),
-            NavigationDestination(
-              icon: Icon(Icons.person_outline),
-              label: 'Profile',
-            ),
           ],
         ),
       ),
@@ -184,10 +151,10 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
           physics: const AlwaysScrollableScrollPhysics(),
           children: const [
             SizedBox(
-              height: 330,
+              height: 360,
               child: EmptyView(
-                title: 'No courses found',
-                message: 'Create a course or try another search.',
+                title: 'No courses yet',
+                message: 'Create a course to start building your content.',
                 icon: Icons.menu_book_outlined,
               ),
             ),
@@ -202,14 +169,17 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
         children: [
           if (provider.errorMessage != null)
-            _RetryNotice(
+            _RetryBanner(
               message: provider.errorMessage!,
               onRetry: provider.refresh,
             ),
           for (final course in provider.courses)
-            _CourseCard(course: course, onTap: () => _openBuilder(course)),
+            _InstructorCourseCard(
+              course: course,
+              onTap: () => _openBuilder(course),
+            ),
           if (provider.loadMoreError != null)
-            _RetryNotice(
+            _RetryBanner(
               message: provider.loadMoreError!,
               onRetry: provider.loadMore,
             ),
@@ -234,46 +204,29 @@ class _InstructorCoursesScreenState extends State<InstructorCoursesScreen> {
     );
   }
 
-  Future<void> _createCourse(InstructorCoursesProvider provider) async {
-    provider.lastCreated = null;
-    await Navigator.push<void>(
+  Future<void> _createCourse() async {
+    final course = await Navigator.push<Course?>(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: provider,
-          child: const InstructorCourseFormScreen(),
-        ),
+      MaterialPageRoute<Course?>(
+        builder: (_) => const InstructorCourseFormScreen(),
       ),
     );
-    if (!mounted) return;
-    final course = provider.lastCreated;
-    if (course != null) {
-      provider.lastCreated = null;
-      await _openBuilder(course, fetchFresh: true);
-    }
+    if (!mounted || course == null) return;
+    await _openBuilder(course);
   }
 
-  Future<void> _openBuilder(Course course, {bool fetchFresh = false}) async {
-    await Navigator.push<void>(
+  Future<void> _openBuilder(Course course) async {
+    await Navigator.pushNamed(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => ChangeNotifierProvider(
-          create: (_) =>
-              InstructorLessonProvider(InstructorLessonService(context.read())),
-          child: InstructorCourseBuilderScreen(
-            courseId: course.id,
-            initialCourse: course,
-            fetchFresh: fetchFresh,
-          ),
-        ),
-      ),
+      AppRoutes.instructorCourseBuilder,
+      arguments: {'courseId': course.id},
     );
     if (mounted) context.read<InstructorCoursesProvider>().refresh();
   }
 }
 
-class _CourseCard extends StatelessWidget {
-  const _CourseCard({required this.course, required this.onTap});
+class _InstructorCourseCard extends StatelessWidget {
+  const _InstructorCourseCard({required this.course, required this.onTap});
 
   final Course course;
   final VoidCallback onTap;
@@ -293,46 +246,40 @@ class _CourseCard extends StatelessWidget {
               height: 150,
               width: double.infinity,
               fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _thumbnailPlaceholder(),
+              errorBuilder: (_, _, _) => _thumbnailPlaceholder(),
             )
           else
             _thumbnailPlaceholder(),
           Padding(
             padding: const EdgeInsets.all(14),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
                         course.title,
-                        style: Theme.of(context).textTheme.titleMedium,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.titleMedium,
                       ),
-                      const SizedBox(height: 8),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 4,
-                        children: [
-                          _StatusPill(status: course.status),
-                          if (course.enrollmentCount > 0)
-                            Chip(
-                              visualDensity: VisualDensity.compact,
-                              avatar: const Icon(
-                                Icons.groups_outlined,
-                                size: 16,
-                              ),
-                              label: Text('${course.enrollmentCount} enrolled'),
-                            ),
-                        ],
-                      ),
-                    ],
-                  ),
+                    ),
+                    _CourseStatusChip(status: course.status),
+                  ],
                 ),
-                const Icon(Icons.chevron_right),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    const Icon(Icons.groups_outlined, size: 18),
+                    const SizedBox(width: 6),
+                    Text('${course.enrollmentCount} enrollments'),
+                    const Spacer(),
+                    const Text('Open builder'),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.chevron_right, size: 18),
+                  ],
+                ),
               ],
             ),
           ),
@@ -345,12 +292,25 @@ class _CourseCard extends StatelessWidget {
     height: 150,
     width: double.infinity,
     color: const Color(0xFFEDE8FF),
-    alignment: Alignment.center,
     child: const Icon(
       Icons.menu_book_outlined,
-      size: 44,
+      size: 48,
       color: AppTheme.primary,
     ),
+  );
+}
+
+class _CourseStatusChip extends StatelessWidget {
+  const _CourseStatusChip({required this.status});
+
+  final String status;
+
+  @override
+  Widget build(BuildContext context) => Chip(
+    label: Text(status.isEmpty ? 'Status unavailable' : status),
+    visualDensity: VisualDensity.compact,
+    backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
+    side: BorderSide.none,
   );
 }
 
@@ -366,25 +326,19 @@ class InstructorCourseFormScreen extends StatefulWidget {
 
 class _InstructorCourseFormScreenState
     extends State<InstructorCourseFormScreen> {
-  static const _levels = ['BEGINNER', 'INTERMEDIATE', 'ADVANCED', 'ALL_LEVELS'];
-
   final _formKey = GlobalKey<FormState>();
   late final TextEditingController _titleController;
   late final TextEditingController _shortDescriptionController;
   late final TextEditingController _descriptionController;
   late final TextEditingController _languageController;
-  late final TextEditingController _requirementsInput;
-  late final TextEditingController _outcomesInput;
-  late final TextEditingController _audienceInput;
-  late final CourseService _courseService;
+  late final _StringListInputController _requirements;
+  late final _StringListInputController _outcomes;
+  late final _StringListInputController _audience;
   List<CourseCategory> _categories = const [];
-  List<String> _requirements = [];
-  List<String> _outcomes = [];
-  List<String> _audience = [];
+  bool _loadingCategories = false;
+  String? _categoriesError;
   String? _categoryId;
   String _level = 'BEGINNER';
-  bool _loadingCategories = false;
-  String? _categoryError;
   bool _saving = false;
 
   bool get _editing => widget.course != null;
@@ -393,7 +347,6 @@ class _InstructorCourseFormScreenState
   @override
   void initState() {
     super.initState();
-    _courseService = CourseService(context.read<ApiClient>());
     final course = widget.course;
     _titleController = TextEditingController(text: course?.title ?? '');
     _shortDescriptionController = TextEditingController(
@@ -403,14 +356,15 @@ class _InstructorCourseFormScreenState
       text: course?.description ?? '',
     );
     _languageController = TextEditingController(text: course?.language ?? '');
-    _requirementsInput = TextEditingController();
-    _outcomesInput = TextEditingController();
-    _audienceInput = TextEditingController();
-    _requirements = [...?course?.requirements];
-    _outcomes = [...?course?.learningOutcomes];
-    _audience = [...?course?.targetAudience];
+    _requirements = _StringListInputController(
+      course?.requirements ?? const [],
+    );
+    _outcomes = _StringListInputController(
+      course?.learningOutcomes ?? const [],
+    );
+    _audience = _StringListInputController(course?.targetAudience ?? const []);
     _categoryId = course?.category?.id;
-    _level = _levels.contains(course?.level) ? course!.level : 'BEGINNER';
+    _level = course?.level.isNotEmpty == true ? course!.level : 'BEGINNER';
     if (!_editing) _loadCategories();
   }
 
@@ -420,74 +374,32 @@ class _InstructorCourseFormScreenState
     _shortDescriptionController.dispose();
     _descriptionController.dispose();
     _languageController.dispose();
-    _requirementsInput.dispose();
-    _outcomesInput.dispose();
-    _audienceInput.dispose();
+    _requirements.dispose();
+    _outcomes.dispose();
+    _audience.dispose();
     super.dispose();
   }
 
   Future<void> _loadCategories() async {
     setState(() {
       _loadingCategories = true;
-      _categoryError = null;
+      _categoriesError = null;
     });
     try {
-      final result = await _courseService.getCategories(page: 1, limit: 20);
+      final result = await context.read<CourseService>().getCategories(
+        page: 1,
+        limit: 20,
+      );
       if (!mounted) return;
-      setState(() => _categories = result.items);
+      setState(() {
+        _categories = result.items.where((item) => item.isActive).toList();
+        _categoryId ??= _categories.isEmpty ? null : _categories.first.id;
+      });
     } on ApiException catch (error) {
-      if (mounted) setState(() => _categoryError = error.message);
+      if (mounted) setState(() => _categoriesError = error.message);
     } finally {
       if (mounted) setState(() => _loadingCategories = false);
     }
-  }
-
-  void _addChip(TextEditingController controller, List<String> target) {
-    final value = controller.text.trim();
-    if (value.isEmpty || target.contains(value)) return;
-    setState(() => target.add(value));
-    controller.clear();
-  }
-
-  Widget _chipInput(
-    String title,
-    TextEditingController controller,
-    List<String> values, {
-    bool editable = true,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          children: [
-            for (var index = 0; index < values.length; index++)
-              InputChip(
-                label: Text(values[index]),
-                onDeleted: !editable || _saving || _archived
-                    ? null
-                    : () => setState(() => values.removeAt(index)),
-              ),
-          ],
-        ),
-        TextField(
-          controller: controller,
-          enabled: editable && !_saving && !_archived,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => _addChip(controller, values),
-          decoration: InputDecoration(
-            hintText: 'Type and press Enter',
-            suffixIcon: IconButton(
-              tooltip: 'Add $title item',
-              onPressed: editable ? () => _addChip(controller, values) : null,
-              icon: const Icon(Icons.add),
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   Future<void> _save() async {
@@ -495,36 +407,22 @@ class _InstructorCourseFormScreenState
       return;
     }
     final provider = context.read<InstructorCoursesProvider>();
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final body = <String, dynamic>{};
-    if (!_editing) {
-      body.addAll({
-        'categoryId': _categoryId,
-        'title': _titleController.text.trim(),
-        'shortDescription': _shortDescriptionController.text.trim(),
-        'description': _descriptionController.text.trim(),
-        'level': _level,
-        'language': _languageController.text.trim(),
-        'requirements': _requirements,
-        'learningOutcomes': _outcomes,
-        'targetAudience': _audience,
-      });
-    } else {
-      final original = widget.course!;
-      body.addAll(
-        courseUpdatePayload(
-          originalShortDescription: original.shortDescription,
-          originalLevel: original.level,
-          originalLearningOutcomes: original.learningOutcomes,
-          shortDescription: _shortDescriptionController.text.trim(),
-          level: _level,
-          learningOutcomes: _outcomes,
-        ),
-      );
-      if (body.isEmpty) {
-        Navigator.pop(context);
-        return;
-      }
+    final body = _editing
+        ? _buildChangedBody()
+        : <String, dynamic>{
+            'categoryId': _categoryId,
+            'title': _titleController.text.trim(),
+            'shortDescription': _shortDescriptionController.text.trim(),
+            'description': _descriptionController.text.trim(),
+            'level': _level,
+            'language': _languageController.text.trim(),
+            'requirements': _requirements.values,
+            'learningOutcomes': _outcomes.values,
+            'targetAudience': _audience.values,
+          };
+    if (_editing && body.isEmpty) {
+      Navigator.pop(context, widget.course);
+      return;
     }
     setState(() => _saving = true);
     final error = _editing
@@ -536,16 +434,39 @@ class _InstructorCourseFormScreenState
       _showMessage(error);
       return;
     }
-    if (!_editing) {
-      await dashboardProvider.load();
+    final course = _editing ? widget.course : provider.lastCreated;
+    if (course == null) {
+      _showMessage('Course saved, but its details could not be loaded.');
+      return;
     }
-    if (!mounted) return;
-    Navigator.pop(context);
+    await context.read<InstructorDashboardProvider>().load();
+    if (mounted) Navigator.pop(context, course);
+  }
+
+  Map<String, dynamic> _buildChangedBody() {
+    final original = widget.course!;
+    final body = <String, dynamic>{};
+    final shortDescription = _shortDescriptionController.text.trim();
+    if (shortDescription != original.shortDescription) {
+      body['shortDescription'] = shortDescription;
+    }
+    if (_level != original.level) body['level'] = _level;
+    if (!_sameList(_outcomes.values, original.learningOutcomes)) {
+      body['learningOutcomes'] = _outcomes.values;
+    }
+    return body;
   }
 
   @override
   Widget build(BuildContext context) {
-    final busy = _saving || context.watch<InstructorCoursesProvider>().isBusy;
+    if (context.watch<AuthProvider>().role != 'INSTRUCTOR') {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Course')),
+        body: const ErrorView(message: 'Only instructors can manage courses.'),
+      );
+    }
+    final provider = context.watch<InstructorCoursesProvider>();
+    final enabled = !_archived && !_saving && !provider.isBusy;
     return Scaffold(
       appBar: AppBar(title: Text(_editing ? 'Edit course' : 'Create course')),
       body: Form(
@@ -554,16 +475,19 @@ class _InstructorCourseFormScreenState
           padding: const EdgeInsets.all(16),
           children: [
             if (_archived)
-              const _InfoNotice(
-                text: 'Archived courses are read-only.',
-                icon: Icons.lock_outline,
-              ),
+              const _ArchivedNotice(message: 'Archived courses are read-only.'),
             if (!_editing) ...[
               if (_loadingCategories) const LinearProgressIndicator(),
-              if (_categoryError != null)
-                _RetryNotice(
-                  message: _categoryError!,
+              if (_categoriesError != null)
+                _RetryBanner(
+                  message: _categoriesError!,
                   onRetry: _loadCategories,
+                ),
+              if (!_loadingCategories && _categories.isEmpty)
+                const EmptyView(
+                  title: 'No categories available',
+                  message: 'An active category is required to create a course.',
+                  icon: Icons.category_outlined,
                 ),
               DropdownButtonFormField<String>(
                 initialValue: _categories.any((item) => item.id == _categoryId)
@@ -577,7 +501,7 @@ class _InstructorCourseFormScreenState
                       child: Text(category.name),
                     ),
                 ],
-                onChanged: busy
+                onChanged: enabled
                     ? (value) => setState(() => _categoryId = value)
                     : null,
                 validator: (_) =>
@@ -586,71 +510,90 @@ class _InstructorCourseFormScreenState
               const SizedBox(height: 12),
               TextFormField(
                 controller: _titleController,
-                enabled: !busy,
+                enabled: enabled,
                 decoration: const InputDecoration(labelText: 'Title *'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Enter a course title.'
-                    : null,
+                validator: _required,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                enabled: !busy,
+                enabled: enabled,
                 minLines: 3,
                 maxLines: 6,
                 decoration: const InputDecoration(labelText: 'Description *'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Enter a course description.'
-                    : null,
+                validator: _required,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _languageController,
-                enabled: !busy,
+                enabled: enabled,
                 decoration: const InputDecoration(labelText: 'Language *'),
-                validator: (value) => value == null || value.trim().isEmpty
-                    ? 'Enter a course language.'
-                    : null,
+                validator: _required,
+              ),
+              const SizedBox(height: 12),
+              _StringListInput(
+                controller: _requirements,
+                label: 'Requirements',
+              ),
+              const SizedBox(height: 12),
+              _StringListInput(
+                controller: _outcomes,
+                label: 'Learning outcomes',
+              ),
+              const SizedBox(height: 12),
+              _StringListInput(controller: _audience, label: 'Target audience'),
+            ] else ...[
+              Text(
+                _titleController.text,
+                style: Theme.of(context).textTheme.headlineSmall,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _shortDescriptionController,
+                enabled: enabled,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Short description',
+                ),
+              ),
+              const SizedBox(height: 12),
+              _StringListInput(
+                controller: _outcomes,
+                label: 'Learning outcomes',
+                enabled: enabled,
               ),
             ],
-            const SizedBox(height: 12),
-            TextFormField(
-              controller: _shortDescriptionController,
-              enabled: !busy && !_archived,
-              maxLength: 180,
-              decoration: const InputDecoration(labelText: 'Short description'),
-            ),
-            const SizedBox(height: 8),
             DropdownButtonFormField<String>(
-              initialValue: _level,
-              decoration: const InputDecoration(labelText: 'Level'),
-              items: [
-                for (final level in _levels)
-                  DropdownMenuItem(value: level, child: Text(_label(level))),
+              initialValue:
+                  const [
+                    'BEGINNER',
+                    'INTERMEDIATE',
+                    'ADVANCED',
+                    'ALL_LEVELS',
+                  ].contains(_level)
+                  ? _level
+                  : 'BEGINNER',
+              decoration: const InputDecoration(labelText: 'Level *'),
+              items: const [
+                DropdownMenuItem(value: 'BEGINNER', child: Text('Beginner')),
+                DropdownMenuItem(
+                  value: 'INTERMEDIATE',
+                  child: Text('Intermediate'),
+                ),
+                DropdownMenuItem(value: 'ADVANCED', child: Text('Advanced')),
+                DropdownMenuItem(
+                  value: 'ALL_LEVELS',
+                  child: Text('All levels'),
+                ),
               ],
-              onChanged: busy || _archived
-                  ? null
-                  : (value) => setState(() => _level = value ?? _level),
-            ),
-            const SizedBox(height: 16),
-            _chipInput(
-              'Requirements',
-              _requirementsInput,
-              _requirements,
-              editable: !_editing,
-            ),
-            const SizedBox(height: 16),
-            _chipInput('Learning outcomes', _outcomesInput, _outcomes),
-            const SizedBox(height: 16),
-            _chipInput(
-              'Target audience',
-              _audienceInput,
-              _audience,
-              editable: !_editing,
+              onChanged: enabled
+                  ? (value) => setState(() => _level = value ?? _level)
+                  : null,
             ),
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: busy || _archived ? null : _save,
+              onPressed: enabled ? _save : null,
               child: Text(_editing ? 'Save changes' : 'Create course'),
             ),
           ],
@@ -658,6 +601,9 @@ class _InstructorCourseFormScreenState
       ),
     );
   }
+
+  String? _required(String? value) =>
+      value == null || value.trim().isEmpty ? 'This field is required.' : null;
 
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
@@ -667,16 +613,9 @@ class _InstructorCourseFormScreenState
 }
 
 class InstructorCourseBuilderScreen extends StatefulWidget {
-  const InstructorCourseBuilderScreen({
-    super.key,
-    required this.courseId,
-    required this.initialCourse,
-    this.fetchFresh = true,
-  });
+  const InstructorCourseBuilderScreen({super.key, required this.courseId});
 
   final String courseId;
-  final Course initialCourse;
-  final bool fetchFresh;
 
   @override
   State<InstructorCourseBuilderScreen> createState() =>
@@ -685,160 +624,15 @@ class InstructorCourseBuilderScreen extends StatefulWidget {
 
 class _InstructorCourseBuilderScreenState
     extends State<InstructorCourseBuilderScreen> {
-  late Course _course;
-  bool _loading = false;
-  String? _error;
-
-  bool get _archived => _course.status.toUpperCase() == 'ARCHIVED';
-
   @override
   void initState() {
     super.initState();
-    _course = widget.initialCourse;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || context.read<AuthProvider>().role != 'INSTRUCTOR') {
-        return;
-      }
+      if (!mounted || context.read<AuthProvider>().role != 'INSTRUCTOR') return;
+      context.read<InstructorCoursesProvider>().loadCourse(widget.courseId);
       context.read<InstructorLessonProvider>().loadSections(widget.courseId);
-      if (widget.fetchFresh) _loadCourse();
     });
   }
-
-  Future<void> _loadCourse() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-    try {
-      final course = await context
-          .read<InstructorCoursesProvider>()
-          .fetchCourse(widget.courseId);
-      if (mounted) setState(() => _course = course);
-    } on ApiException catch (error) {
-      if (mounted) setState(() => _error = error.message);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  Future<void> _refreshAll() async {
-    final lessonProvider = context.read<InstructorLessonProvider>();
-    await Future.wait([
-      _loadCourse(),
-      lessonProvider.loadSections(widget.courseId),
-    ]);
-  }
-
-  Future<void> _openCourseForm() async {
-    final provider = context.read<InstructorCoursesProvider>();
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    await Navigator.push<void>(
-      context,
-      MaterialPageRoute<void>(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: provider,
-          child: InstructorCourseFormScreen(course: _course),
-        ),
-      ),
-    );
-    if (mounted) {
-      await _loadCourse();
-      await dashboardProvider.load();
-    }
-  }
-
-  Future<void> _pickThumbnail() async {
-    if (_archived) return;
-    final coursesProvider = context.read<InstructorCoursesProvider>();
-    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
-    if (file == null || !mounted) return;
-    final error = await coursesProvider.uploadThumbnail(_course.id, file);
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await _loadCourse();
-    if (mounted) _showMessage('Course thumbnail uploaded.');
-  }
-
-  Future<void> _removeThumbnail() async {
-    final coursesProvider = context.read<InstructorCoursesProvider>();
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Remove thumbnail?',
-      message: 'The course thumbnail will be deleted.',
-      confirmLabel: 'Remove',
-    );
-    if (!mounted || !confirmed) return;
-    final error = await coursesProvider.removeThumbnail(_course.id);
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await _loadCourse();
-  }
-
-  Future<void> _publishCourse() async {
-    final coursesProvider = context.read<InstructorCoursesProvider>();
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Publish course?',
-      message:
-          'The backend will validate the course content before publishing.',
-      confirmLabel: 'Publish',
-    );
-    if (!mounted || !confirmed) return;
-    final error = await coursesProvider.publishCourse(_course.id);
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await _loadCourse();
-    await dashboardProvider.load();
-    if (mounted) _showMessage('Course published.');
-  }
-
-  Future<void> _archiveCourse() async {
-    final coursesProvider = context.read<InstructorCoursesProvider>();
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final confirmed = await showConfirmDialog(
-      context,
-      title: 'Archive course?',
-      message: 'Students keep their access, but new enrollments will stop. This cannot be undone here.',
-      confirmLabel: 'Archive',
-    );
-    if (!mounted || !confirmed) return;
-    final error = await coursesProvider.archiveCourse(_course.id);
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await _loadCourse();
-    await dashboardProvider.load();
-    if (mounted) _showMessage('Course archived.');
-  }
-
-  Future<void> _openEnrollments() => Navigator.push<void>(
-    context,
-    MaterialPageRoute<void>(
-      builder: (_) => ChangeNotifierProvider(
-        create: (_) =>
-            InstructorAssignmentProvider(
-                InstructorAssignmentService(context.read()),
-                InstructorLessonService(context.read()),
-              )
-              ..courseId = widget.courseId
-              ..courseTitle = _course.title
-              ..loadEnrollments(status: ''),
-        child: InstructorCourseEnrollmentsScreen(courseTitle: _course.title),
-      ),
-    ),
-  );
 
   @override
   Widget build(BuildContext context) {
@@ -848,322 +642,203 @@ class _InstructorCourseBuilderScreenState
         body: const ErrorView(message: 'Only instructors can manage courses.'),
       );
     }
-    final coursesProvider = context.watch<InstructorCoursesProvider>();
-    final sectionProvider = context.watch<InstructorLessonProvider>();
-    final busy = coursesProvider.isBusy || sectionProvider.isBusy;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_course.title),
-        actions: [
-          IconButton(
-            tooltip: 'Quizzes',
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.instructorQuizzes,
-              arguments: {'courseId': _course.id, 'courseTitle': _course.title},
+    return Consumer<InstructorCoursesProvider>(
+      builder: (context, courses, _) {
+        final course = courses.selectedCourse?.id == widget.courseId
+            ? courses.selectedCourse
+            : null;
+        if (courses.isLoadingCourse && course == null) {
+          return const Scaffold(
+            body: LoadingView(message: 'Loading course builder...'),
+          );
+        }
+        if (courses.courseError != null && course == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Course builder')),
+            body: ErrorView(
+              message: courses.courseError!,
+              onRetry: () => courses.loadCourse(widget.courseId),
             ),
-            icon: const Icon(Icons.quiz_outlined),
-          ),
-          IconButton(
-            tooltip: 'Assignments',
-            onPressed: () => Navigator.pushNamed(
-              context,
-              AppRoutes.instructorAssignments,
-              arguments: {'courseId': _course.id, 'courseTitle': _course.title},
+          );
+        }
+        if (course == null) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Course builder')),
+            body: ErrorView(
+              message: 'This course is unavailable.',
+              onRetry: () => courses.loadCourse(widget.courseId),
             ),
-            icon: const Icon(Icons.assignment_outlined),
+          );
+        }
+        final archived = course.status.toUpperCase() == 'ARCHIVED';
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(course.title),
+            actions: [
+              IconButton(
+                tooltip: 'Quizzes',
+                onPressed: () =>
+                    _openRoute(AppRoutes.instructorQuizzes, course),
+                icon: const Icon(Icons.quiz_outlined),
+              ),
+              IconButton(
+                tooltip: 'Assignments',
+                onPressed: () =>
+                    _openRoute(AppRoutes.instructorAssignments, course),
+                icon: const Icon(Icons.assignment_outlined),
+              ),
+              IconButton(
+                tooltip: 'Enrollments',
+                onPressed: () =>
+                    _openRoute(AppRoutes.instructorEnrollments, course),
+                icon: const Icon(Icons.groups_outlined),
+              ),
+            ],
           ),
-          IconButton(
-            tooltip: 'Enrollments',
-            onPressed: _openEnrollments,
-            icon: const Icon(Icons.groups_outlined),
-          ),
-        ],
-      ),
-      body: _loading && _course.id.isEmpty
-          ? const LoadingView(message: 'Loading course...')
-          : RefreshIndicator(
-              onRefresh: _refreshAll,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
-                children: [
-                  if (_error != null)
-                    _RetryNotice(message: _error!, onRetry: _loadCourse),
-                  if (_archived)
-                    const _InfoNotice(
-                      text: 'Archived courses are read-only.',
-                      icon: Icons.lock_outline,
-                    ),
-                  _ThumbnailEditor(
-                    course: _course,
-                    locked: _archived,
-                    onUpload: _pickThumbnail,
-                    onRemove: _removeThumbnail,
+          body: RefreshIndicator(
+            onRefresh: () async {
+              await Future.wait([
+                courses.loadCourse(course.id),
+                context.read<InstructorLessonProvider>().loadSections(
+                  course.id,
+                ),
+              ]);
+            },
+            child: ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (archived)
+                  const _ArchivedNotice(
+                    message: 'Archived courses are read-only.',
                   ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  _course.title,
-                                  style: Theme.of(context).textTheme.titleLarge,
-                                ),
-                              ),
-                              _StatusPill(status: _course.status),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(_course.shortDescription),
-                          if (_course.description.isNotEmpty) ...[
-                            const SizedBox(height: 8),
-                            Text(_course.description),
-                          ],
-                          const SizedBox(height: 12),
-                          Text(
-                            '${_course.levelLabel} • ${_course.language} • ${_course.enrollmentCount} enrollments',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                          const SizedBox(height: 12),
-                          Wrap(
-                            spacing: 8,
-                            children: [
-                              OutlinedButton.icon(
-                                onPressed: _archived || busy
-                                    ? null
-                                    : _openCourseForm,
-                                icon: const Icon(Icons.edit_outlined),
-                                label: const Text('Edit details'),
-                              ),
-                              if (_course.status.toUpperCase() == 'DRAFT')
-                                FilledButton.icon(
-                                  onPressed: busy ? null : _publishCourse,
-                                  icon: const Icon(Icons.publish),
-                                  label: const Text('Publish'),
-                                ),
-                              if (!_archived)
-                                TextButton.icon(
-                                  onPressed: busy ? null : _archiveCourse,
-                                  icon: const Icon(Icons.archive_outlined),
-                                  label: const Text('Archive'),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
+                _CourseThumbnailPanel(course: course, enabled: !archived),
+                const SizedBox(height: 12),
+                Card(
+                  child: Column(
                     children: [
-                      Expanded(
-                        child: SectionHeader(
-                          title: 'Sections',
-                          subtitle: 'Build and order the course curriculum.',
+                      ListTile(
+                        title: const Text('Course details'),
+                        subtitle: Text(
+                          '${course.levelLabel} • ${course.language}'
+                          '${course.enrollmentCount > 0 ? ' • ${course.enrollmentCount} enrollments' : ''}',
                         ),
+                        trailing: const Icon(Icons.edit_outlined),
+                        enabled: !archived,
+                        onTap: archived ? null : () => _editCourse(course),
                       ),
-                      FilledButton.tonalIcon(
-                        onPressed: _archived || busy
-                            ? null
-                            : () => _editSection(sectionProvider),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add'),
-                      ),
+                      _CourseStatusChip(status: course.status),
+                      if (course.shortDescription.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(course.shortDescription),
+                          ),
+                        ),
                     ],
                   ),
-                  if (sectionProvider.sectionsError != null &&
-                      sectionProvider.sections.isEmpty)
-                    ErrorView(
-                      message: sectionProvider.sectionsError!,
-                      onRetry: () => sectionProvider.loadSections(_course.id),
-                    )
-                  else if (sectionProvider.isLoadingSections &&
-                      sectionProvider.sections.isEmpty)
-                    const LoadingView(message: 'Loading sections...')
-                  else if (sectionProvider.sections.isEmpty)
-                    const EmptyView(
-                      title: 'No sections yet',
-                      message: 'Add a section to begin building this course.',
-                      icon: Icons.library_books_outlined,
-                    )
-                  else
-                    for (
-                      var index = 0;
-                      index < sectionProvider.sections.length;
-                      index++
-                    )
-                      _SectionCard(
-                        section: sectionProvider.sections[index],
-                        index: index,
-                        count: sectionProvider.sections.length,
-                        locked: _archived || busy,
-                        onTap: () =>
-                            _openLessons(sectionProvider.sections[index]),
-                        onEdit: () => _editSection(
-                          sectionProvider,
-                          section: sectionProvider.sections[index],
-                        ),
-                        onTogglePublish: () => _toggleSectionPublished(
-                          sectionProvider,
-                          sectionProvider.sections[index],
-                        ),
-                        onMove: (direction) => _moveSection(
-                          sectionProvider,
-                          sectionProvider.sections[index],
-                          index + direction + 1,
-                        ),
-                        onDelete: () => _deleteSection(
-                          sectionProvider,
-                          sectionProvider.sections[index],
-                        ),
+                ),
+                const SizedBox(height: 12),
+                Consumer<InstructorLessonProvider>(
+                  builder: (context, lessons, _) =>
+                      InstructorSectionManagementPanel(
+                        courseId: course.id,
+                        courseTitle: course.title,
+                        enabled: !archived && !courses.isBusy,
+                        provider: lessons,
                       ),
-                  if (sectionProvider.sectionsError != null &&
-                      sectionProvider.sections.isNotEmpty)
-                    _RetryNotice(
-                      message: sectionProvider.sectionsError!,
-                      onRetry: () => sectionProvider.loadSections(_course.id),
+                ),
+                const SizedBox(height: 100),
+              ],
+            ),
+          ),
+          bottomNavigationBar: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+              child: Row(
+                children: [
+                  if (course.status.toUpperCase() == 'DRAFT')
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: courses.isBusy
+                            ? null
+                            : () => _publish(course),
+                        icon: const Icon(Icons.publish),
+                        label: const Text('Publish'),
+                      ),
                     ),
-                  const SizedBox(height: 96),
+                  if (course.status.toUpperCase() != 'ARCHIVED') ...[
+                    if (course.status.toUpperCase() == 'DRAFT')
+                      const SizedBox(width: 12),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: courses.isBusy
+                            ? null
+                            : () => _archive(course),
+                        icon: const Icon(Icons.archive_outlined),
+                        label: const Text('Archive'),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: 1,
-        onDestinationSelected: (index) {
-          if (index == 0) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.instructorDashboard,
-              (route) => false,
-            );
-          } else if (index == 1) {
-            Navigator.pushNamedAndRemoveUntil(
-              context,
-              AppRoutes.instructorCourses,
-              (route) => route.settings.name == AppRoutes.instructorDashboard,
-            );
-          } else if (index == 2) {
-            Navigator.pushNamed(context, AppRoutes.profile);
-          }
-        },
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            label: 'Dashboard',
           ),
-          NavigationDestination(
-            icon: Icon(Icons.menu_book_outlined),
-            label: 'My Courses',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
-          ),
-        ],
+        );
+      },
+    );
+  }
+
+  Future<void> _editCourse(Course course) async {
+    final result = await Navigator.push<Course?>(
+      context,
+      MaterialPageRoute<Course?>(
+        builder: (_) => InstructorCourseFormScreen(course: course),
       ),
     );
+    if (!mounted || result == null) return;
+    await context.read<InstructorDashboardProvider>().load();
   }
 
-  Future<void> _editSection(
-    InstructorLessonProvider provider, {
-    CourseSection? section,
-  }) async {
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (_) => _SectionFormDialog(section: section),
-    );
-    if (result == null || !mounted) return;
-    final error = section == null
-        ? await provider.createSection(result)
-        : await provider.updateSection(section.id, result);
+  Future<void> _publish(Course course) async {
+    final provider = context.read<InstructorCoursesProvider>();
+    final error = await provider.publishCourse(course.id);
     if (!mounted) return;
     if (error != null) {
       _showMessage(error);
       return;
     }
-    await dashboardProvider.load();
+    await context.read<InstructorDashboardProvider>().load();
+    if (mounted) _showMessage('Course published.');
   }
 
-  Future<void> _moveSection(
-    InstructorLessonProvider provider,
-    CourseSection section,
-    int order,
-  ) async {
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final error = await provider.reorderSection(section.id, order);
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await dashboardProvider.load();
-  }
-
-  Future<void> _toggleSectionPublished(
-    InstructorLessonProvider provider,
-    CourseSection section,
-  ) async {
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    final error = await provider.setSectionPublished(
-      section,
-      !section.isPublished,
-    );
-    if (!mounted) return;
-    if (error != null) {
-      _showMessage(error);
-      return;
-    }
-    await dashboardProvider.load();
-  }
-
-  Future<void> _deleteSection(
-    InstructorLessonProvider provider,
-    CourseSection section,
-  ) async {
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
+  Future<void> _archive(Course course) async {
     final confirmed = await showConfirmDialog(
       context,
-      title: 'Delete section?',
-      message: 'This also deletes its lessons, quizzes and assignments. This action cannot be undone.',
-      confirmLabel: 'Delete section',
+      title: 'Archive course?',
+      message: 'Students keep access, but new enrollments will stop.',
+      confirmLabel: 'Archive',
     );
     if (!mounted || !confirmed) return;
-    final error = await provider.deleteSection(section.id);
+    final error = await context.read<InstructorCoursesProvider>().archiveCourse(
+      course.id,
+    );
     if (!mounted) return;
     if (error != null) {
       _showMessage(error);
       return;
     }
-    await dashboardProvider.load();
+    await context.read<InstructorDashboardProvider>().load();
+    if (mounted) _showMessage('Course archived.');
   }
 
-  Future<void> _openLessons(CourseSection section) async {
-    final provider = context.read<InstructorLessonProvider>();
-    final dashboardProvider = context.read<InstructorDashboardProvider>();
-    await Navigator.push<void>(
+  void _openRoute(String route, Course course) {
+    Navigator.pushNamed(
       context,
-      MaterialPageRoute<void>(
-        builder: (_) => ChangeNotifierProvider.value(
-          value: provider,
-          child: InstructorLessonsScreen(
-            sectionId: section.id,
-            sectionTitle: section.title,
-          ),
-        ),
-      ),
+      route,
+      arguments: {'courseId': course.id, 'courseTitle': course.title},
     );
-    if (mounted) {
-      await provider.loadSections(_course.id);
-      await _loadCourse();
-      await dashboardProvider.load();
-    }
   }
 
   void _showMessage(String message) {
@@ -1173,157 +848,351 @@ class _InstructorCourseBuilderScreenState
   }
 }
 
-class _ThumbnailEditor extends StatelessWidget {
-  const _ThumbnailEditor({
-    required this.course,
-    required this.locked,
-    required this.onUpload,
-    required this.onRemove,
-  });
+class _CourseThumbnailPanel extends StatelessWidget {
+  const _CourseThumbnailPanel({required this.course, required this.enabled});
 
   final Course course;
-  final bool locked;
-  final VoidCallback onUpload;
-  final VoidCallback onRemove;
+  final bool enabled;
 
   @override
-  Widget build(BuildContext context) {
-    return Consumer<InstructorCoursesProvider>(
-      builder: (context, provider, _) => Card(
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (course.thumbnailUrl != null)
-              Image.network(
-                course.thumbnailUrl!,
-                height: 180,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    _imagePlaceholder(),
-              )
-            else
-              _imagePlaceholder(),
-            if (provider.thumbnailUploadProgress != null)
-              LinearProgressIndicator(value: provider.thumbnailUploadProgress),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Wrap(
-                spacing: 8,
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: locked || provider.isBusy ? null : onUpload,
-                    icon: const Icon(Icons.upload_file),
-                    label: Text(
-                      course.thumbnailUrl == null
-                          ? 'Upload thumbnail'
-                          : 'Change thumbnail',
-                    ),
+  Widget build(BuildContext context) => Consumer<InstructorCoursesProvider>(
+    builder: (context, provider, _) => Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (course.thumbnailUrl != null)
+            Image.network(
+              course.thumbnailUrl!,
+              height: 190,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => _placeholder(),
+            )
+          else
+            _placeholder(),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (provider.uploadProgress != null) ...[
+                  LinearProgressIndicator(value: provider.uploadProgress),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Uploading thumbnail ${(provider.uploadProgress! * 100).round()}%',
                   ),
-                  if (course.thumbnailUrl != null)
-                    TextButton.icon(
-                      onPressed: locked || provider.isBusy ? null : onRemove,
-                      icon: const Icon(Icons.delete_outline),
-                      label: const Text('Remove'),
-                    ),
                 ],
-              ),
+                Wrap(
+                  spacing: 8,
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: !enabled || provider.isBusy
+                          ? null
+                          : () => _selectImage(context, provider),
+                      icon: const Icon(Icons.image_outlined),
+                      label: Text(
+                        course.thumbnailUrl == null
+                            ? 'Upload thumbnail'
+                            : 'Change thumbnail',
+                      ),
+                    ),
+                    if (course.thumbnailUrl != null)
+                      TextButton.icon(
+                        onPressed: !enabled || provider.isBusy
+                            ? null
+                            : () => _remove(context, provider),
+                        icon: const Icon(Icons.delete_outline),
+                        label: const Text('Remove'),
+                      ),
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
+    ),
+  );
+
+  Widget _placeholder() => Container(
+    height: 190,
+    color: const Color(0xFFEDE8FF),
+    child: const Icon(Icons.image_outlined, size: 48, color: AppTheme.primary),
+  );
+
+  Future<void> _selectImage(
+    BuildContext context,
+    InstructorCoursesProvider provider,
+  ) async {
+    final dashboardProvider = context.read<InstructorDashboardProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final file = await ImagePicker().pickImage(source: ImageSource.gallery);
+    if (file == null || !context.mounted) return;
+    final errorText = await UploadHelper.validateImageFile(file);
+    if (errorText != null) {
+      _showMessageWithMessenger(messenger, errorText);
+      return;
+    }
+    final error = await provider.uploadThumbnail(course.id, file);
+    if (!context.mounted) return;
+    if (error != null) {
+      _showMessageWithMessenger(messenger, error);
+      return;
+    }
+    await dashboardProvider.load();
+    _showMessageWithMessenger(messenger, 'Thumbnail uploaded.');
   }
 
-  Widget _imagePlaceholder() => Container(
-    height: 180,
-    color: const Color(0xFFEDE8FF),
-    alignment: Alignment.center,
-    child: const Icon(Icons.photo_outlined, color: AppTheme.primary, size: 46),
-  );
+  Future<void> _remove(
+    BuildContext context,
+    InstructorCoursesProvider provider,
+  ) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Remove thumbnail?',
+      message: 'The course thumbnail will be deleted.',
+      confirmLabel: 'Remove',
+    );
+    if (!confirmed || !context.mounted) return;
+    final error = await provider.removeThumbnail(course.id);
+    if (context.mounted) _showMessage(context, error ?? 'Thumbnail removed.');
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _showMessageWithMessenger(
+    ScaffoldMessengerState messenger,
+    String message,
+  ) {
+    if (!messenger.mounted) return;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
 }
 
-class _SectionCard extends StatelessWidget {
-  const _SectionCard({
+class InstructorSectionManagementPanel extends StatelessWidget {
+  const InstructorSectionManagementPanel({
+    super.key,
+    required this.courseId,
+    required this.courseTitle,
+    required this.enabled,
+    required this.provider,
+  });
+
+  final String courseId;
+  final String courseTitle;
+  final bool enabled;
+  final InstructorLessonProvider provider;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: SectionHeader(
+                  title: 'Sections',
+                  subtitle: 'Build and order course content.',
+                ),
+              ),
+              IconButton(
+                tooltip: 'Add section',
+                onPressed: !enabled ? null : () => _editSection(context, null),
+                icon: const Icon(Icons.add_circle_outline),
+              ),
+            ],
+          ),
+          if (provider.isLoadingSections && provider.sections.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(child: CircularProgressIndicator()),
+            )
+          else if (provider.sectionsError != null && provider.sections.isEmpty)
+            ErrorView(
+              message: provider.sectionsError!,
+              onRetry: () => provider.loadSections(courseId),
+            )
+          else if (provider.sections.isEmpty)
+            const EmptyView(
+              title: 'No sections yet',
+              message: 'Add a section to begin the course curriculum.',
+              icon: Icons.library_books_outlined,
+            )
+          else ...[
+            if (provider.sectionsError != null)
+              _RetryBanner(
+                message: provider.sectionsError!,
+                onRetry: () => provider.loadSections(courseId),
+              ),
+            for (var index = 0; index < provider.sections.length; index++)
+              _SectionManagementTile(
+                section: provider.sections[index],
+                index: index,
+                count: provider.sections.length,
+                enabled: enabled && !provider.isBusy,
+                courseId: courseId,
+                courseTitle: courseTitle,
+                provider: provider,
+                onEdit: () => _editSection(context, provider.sections[index]),
+                onError: (message) => _showMessage(context, message),
+              ),
+          ],
+        ],
+      ),
+    ),
+  );
+
+  Future<void> _editSection(
+    BuildContext context,
+    CourseSection? section,
+  ) async {
+    final result = await showDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => _SectionFormDialog(section: section),
+    );
+    if (result == null || !context.mounted) return;
+    final error = section == null
+        ? await provider.createSection(courseId, result)
+        : await provider.updateSection(section.id, result);
+    if (!context.mounted) return;
+    if (error != null) {
+      _showMessage(context, error);
+      return;
+    }
+    await context.read<InstructorDashboardProvider>().load();
+    if (context.mounted) {
+      _showMessage(
+        context,
+        section == null ? 'Section created.' : 'Section updated.',
+      );
+    }
+  }
+
+  void _showMessage(BuildContext context, String message) {
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _SectionManagementTile extends StatelessWidget {
+  const _SectionManagementTile({
     required this.section,
     required this.index,
     required this.count,
-    required this.locked,
-    required this.onTap,
+    required this.enabled,
+    required this.courseId,
+    required this.courseTitle,
+    required this.provider,
     required this.onEdit,
-    required this.onTogglePublish,
-    required this.onMove,
-    required this.onDelete,
+    required this.onError,
   });
 
   final CourseSection section;
   final int index;
   final int count;
-  final bool locked;
-  final VoidCallback onTap;
+  final bool enabled;
+  final String courseId;
+  final String courseTitle;
+  final InstructorLessonProvider provider;
   final VoidCallback onEdit;
-  final VoidCallback onTogglePublish;
-  final ValueChanged<int> onMove;
-  final VoidCallback onDelete;
+  final ValueChanged<String> onError;
 
   @override
-  Widget build(BuildContext context) => Card(
-    margin: const EdgeInsets.only(top: 8),
-    child: Column(
-      children: [
-        ListTile(
-          onTap: onTap,
-          leading: const Icon(Icons.library_books_outlined),
-          title: Text(section.title),
-          subtitle: Text('${section.lessonCount} lessons'),
-          trailing: Icon(
-            section.isPublished ? Icons.public : Icons.edit_note,
-            color: section.isPublished ? Colors.green : Colors.orange,
+  Widget build(BuildContext context) => Column(
+    children: [
+      ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const Icon(
+          Icons.library_books_outlined,
+          color: AppTheme.primary,
+        ),
+        title: Text(section.title),
+        subtitle: Text(
+          '${section.lessonCount} lessons • ${section.isPublished ? 'Published' : 'Draft'}',
+        ),
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute<void>(
+            builder: (_) => ChangeNotifierProvider.value(
+              value: provider,
+              child: InstructorLessonsScreen(
+                sectionId: section.id,
+                sectionTitle: section.title,
+              ),
+            ),
           ),
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(12, 0, 8, 8),
-          child: Row(
-            children: [
-              Chip(
-                label: Text(section.isPublished ? 'Published' : 'Draft'),
-                visualDensity: VisualDensity.compact,
-              ),
-              const Spacer(),
-              IconButton(
-                tooltip: 'Move up',
-                onPressed: locked || index == 0 ? null : () => onMove(-1),
-                icon: const Icon(Icons.arrow_upward),
-              ),
-              IconButton(
-                tooltip: 'Move down',
-                onPressed: locked || index == count - 1
-                    ? null
-                    : () => onMove(1),
-                icon: const Icon(Icons.arrow_downward),
-              ),
-              PopupMenuButton<String>(
-                enabled: !locked,
-                onSelected: (value) {
-                  if (value == 'edit') onEdit();
-                  if (value == 'delete') onDelete();
-                  if (value == 'publish') onTogglePublish();
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                  PopupMenuItem(
-                    value: 'publish',
-                    child: Text(section.isPublished ? 'Unpublish' : 'Publish'),
-                  ),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
-              ),
-            ],
-          ),
+        trailing: PopupMenuButton<String>(
+          enabled: enabled,
+          onSelected: (value) {
+            if (value == 'edit') onEdit();
+            if (value == 'delete') _delete(context);
+          },
+          itemBuilder: (_) => const [
+            PopupMenuItem(value: 'edit', child: Text('Edit section')),
+            PopupMenuItem(value: 'delete', child: Text('Delete section')),
+          ],
         ),
-      ],
-    ),
+      ),
+      Row(
+        children: [
+          Text('Order ${section.order > 0 ? section.order : index + 1}'),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Move section up',
+            onPressed: !enabled || index == 0 ? null : () => _move(context, -1),
+            icon: const Icon(Icons.arrow_upward),
+          ),
+          IconButton(
+            tooltip: 'Move section down',
+            onPressed: !enabled || index >= count - 1
+                ? null
+                : () => _move(context, 1),
+            icon: const Icon(Icons.arrow_downward),
+          ),
+        ],
+      ),
+      const Divider(height: 1),
+    ],
   );
+
+  Future<void> _move(BuildContext context, int direction) async {
+    final error = await provider.reorderSection(
+      section.id,
+      index + direction + 1,
+    );
+    if (error != null && context.mounted) onError(error);
+    if (error == null && context.mounted) {
+      await context.read<InstructorDashboardProvider>().load();
+    }
+  }
+
+  Future<void> _delete(BuildContext context) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Delete section?',
+      message: 'This also deletes its lessons, quizzes and assignments.',
+      confirmLabel: 'Delete section',
+    );
+    if (!confirmed || !context.mounted) return;
+    final error = await provider.deleteSection(section.id);
+    if (!context.mounted) return;
+    if (error != null) {
+      onError(error);
+      return;
+    }
+    await context.read<InstructorDashboardProvider>().load();
+  }
 }
 
 class _SectionFormDialog extends StatefulWidget {
@@ -1337,25 +1206,43 @@ class _SectionFormDialog extends StatefulWidget {
 
 class _SectionFormDialogState extends State<_SectionFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _title;
-  late final TextEditingController _description;
-  late bool _published;
+  late final TextEditingController _titleController;
+  late final TextEditingController _descriptionController;
+  late bool _isPublished;
 
   @override
   void initState() {
     super.initState();
-    _title = TextEditingController(text: widget.section?.title ?? '');
-    _description = TextEditingController(
+    _titleController = TextEditingController(text: widget.section?.title ?? '');
+    _descriptionController = TextEditingController(
       text: widget.section?.description ?? '',
     );
-    _published = widget.section?.isPublished ?? false;
+    _isPublished = widget.section?.isPublished ?? false;
   }
 
   @override
   void dispose() {
-    _title.dispose();
-    _description.dispose();
+    _titleController.dispose();
+    _descriptionController.dispose();
     super.dispose();
+  }
+
+  void _save() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final body = <String, dynamic>{
+      'title': _titleController.text.trim(),
+      'description': _descriptionController.text.trim(),
+      'isPublished': _isPublished,
+    };
+    if (widget.section != null) {
+      final original = widget.section!;
+      body.removeWhere((key, value) {
+        if (key == 'title') return value == original.title;
+        if (key == 'description') return value == original.description;
+        return value == original.isPublished;
+      });
+    }
+    Navigator.pop(context, body);
   }
 
   @override
@@ -1368,23 +1255,24 @@ class _SectionFormDialogState extends State<_SectionFormDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
-              controller: _title,
+              controller: _titleController,
               decoration: const InputDecoration(labelText: 'Title *'),
               validator: (value) => value == null || value.trim().isEmpty
                   ? 'Enter a section title.'
                   : null,
             ),
+            const SizedBox(height: 12),
             TextFormField(
-              controller: _description,
+              controller: _descriptionController,
               minLines: 2,
               maxLines: 4,
               decoration: const InputDecoration(labelText: 'Description'),
             ),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
-              value: _published,
-              onChanged: (value) => setState(() => _published = value),
               title: const Text('Published'),
+              value: _isPublished,
+              onChanged: (value) => setState(() => _isPublished = value),
             ),
           ],
         ),
@@ -1395,91 +1283,155 @@ class _SectionFormDialogState extends State<_SectionFormDialog> {
         onPressed: () => Navigator.pop(context),
         child: const Text('Cancel'),
       ),
-      FilledButton(
-        onPressed: () {
-          if (!(_formKey.currentState?.validate() ?? false)) return;
-          final body = <String, dynamic>{
-            'title': _title.text.trim(),
-            'description': _description.text.trim(),
-            'isPublished': _published,
-          };
-          if (widget.section != null) {
-            final changed = <String, dynamic>{};
-            if (body['title'] != widget.section!.title) {
-              changed['title'] = body['title'];
-            }
-            if (body['description'] != widget.section!.description) {
-              changed['description'] = body['description'];
-            }
-            if (body['isPublished'] != widget.section!.isPublished) {
-              changed['isPublished'] = body['isPublished'];
-            }
-            Navigator.pop(context, changed);
-          } else {
-            Navigator.pop(context, body);
-          }
-        },
-        child: Text(widget.section == null ? 'Create' : 'Save'),
-      ),
+      FilledButton(onPressed: _save, child: const Text('Save')),
     ],
   );
 }
 
-class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
+class _StringListInputController extends ChangeNotifier {
+  _StringListInputController(Iterable<String> initial) : values = [...initial];
+  final List<String> values;
 
-  final String status;
+  void add(String value) {
+    final normalized = value.trim();
+    if (normalized.isEmpty || values.contains(normalized)) return;
+    values.add(normalized);
+    notifyListeners();
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    final normalized = status.toUpperCase();
-    final color = normalized == 'PUBLISHED'
-        ? Colors.green
-        : normalized == 'ARCHIVED'
-        ? Colors.blueGrey
-        : Colors.orange;
-    return Chip(
-      label: Text(_label(normalized)),
-      visualDensity: VisualDensity.compact,
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide(color: color.withValues(alpha: 0.35)),
-    );
+  void remove(String value) {
+    values.remove(value);
+    notifyListeners();
   }
 }
 
-class _InfoNotice extends StatelessWidget {
-  const _InfoNotice({required this.text, required this.icon});
+class _StringListInput extends StatefulWidget {
+  const _StringListInput({
+    required this.controller,
+    required this.label,
+    this.enabled = true,
+  });
 
-  final String text;
-  final IconData icon;
+  final _StringListInputController controller;
+  final String label;
+  final bool enabled;
 
   @override
-  Widget build(BuildContext context) => Card(
-    color: Theme.of(context).colorScheme.secondaryContainer,
-    child: ListTile(leading: Icon(icon), title: Text(text)),
+  State<_StringListInput> createState() => _StringListInputState();
+}
+
+class _StringListInputState extends State<_StringListInput> {
+  late final TextEditingController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController = TextEditingController();
+    widget.controller.addListener(_changed);
+  }
+
+  @override
+  void didUpdateWidget(covariant _StringListInput oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_changed);
+      widget.controller.addListener(_changed);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_changed);
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  void _add() {
+    for (final value in _textController.text.split(',')) {
+      widget.controller.add(value);
+    }
+    _textController.clear();
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      TextFormField(
+        controller: _textController,
+        enabled: widget.enabled,
+        decoration: InputDecoration(
+          labelText: widget.label,
+          helperText:
+              'Type an item and press done. Separate entries with commas.',
+          suffixIcon: IconButton(
+            onPressed: widget.enabled ? _add : null,
+            icon: const Icon(Icons.add),
+          ),
+        ),
+        onFieldSubmitted: (_) => _add(),
+      ),
+      if (widget.controller.values.isNotEmpty)
+        Padding(
+          padding: const EdgeInsets.only(top: 6),
+          child: Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              for (final item in widget.controller.values)
+                InputChip(
+                  label: Text(item),
+                  onDeleted: widget.enabled
+                      ? () => widget.controller.remove(item)
+                      : null,
+                ),
+            ],
+          ),
+        ),
+    ],
   );
 }
 
-class _RetryNotice extends StatelessWidget {
-  const _RetryNotice({required this.message, required this.onRetry});
+class _ArchivedNotice extends StatelessWidget {
+  const _ArchivedNotice({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    color: Theme.of(context).colorScheme.surfaceContainerHighest,
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Row(
+        children: [
+          const Icon(Icons.lock_outline),
+          const SizedBox(width: 8),
+          Expanded(child: Text(message)),
+        ],
+      ),
+    ),
+  );
+}
+
+class _RetryBanner extends StatelessWidget {
+  const _RetryBanner({required this.message, required this.onRetry});
 
   final String message;
   final VoidCallback onRetry;
 
   @override
-  Widget build(BuildContext context) => MaterialBanner(
-    content: Text(message),
-    actions: [TextButton(onPressed: onRetry, child: const Text('Retry'))],
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: MaterialBanner(
+      content: Text(message),
+      actions: [TextButton(onPressed: onRetry, child: const Text('Retry'))],
+    ),
   );
 }
-
-String _label(String value) => value
-    .split('_')
-    .map(
-      (part) =>
-          part.isEmpty ? part : '${part[0]}${part.substring(1).toLowerCase()}',
-    )
-    .join(' ');
 
 bool _sameList(List<String> first, List<String> second) {
   if (first.length != second.length) return false;
@@ -1487,23 +1439,4 @@ bool _sameList(List<String> first, List<String> second) {
     if (first[index] != second[index]) return false;
   }
   return true;
-}
-
-Map<String, dynamic> courseUpdatePayload({
-  required String originalShortDescription,
-  required String originalLevel,
-  required List<String> originalLearningOutcomes,
-  required String shortDescription,
-  required String level,
-  required List<String> learningOutcomes,
-}) {
-  final changedFields = <String, dynamic>{};
-  if (shortDescription != originalShortDescription) {
-    changedFields['shortDescription'] = shortDescription;
-  }
-  if (level != originalLevel) changedFields['level'] = level;
-  if (!_sameList(learningOutcomes, originalLearningOutcomes)) {
-    changedFields['learningOutcomes'] = learningOutcomes;
-  }
-  return changedFields;
 }

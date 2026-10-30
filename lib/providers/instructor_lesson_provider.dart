@@ -22,10 +22,10 @@ class InstructorLessonProvider extends ChangeNotifier {
 
   CancelToken? _uploadCancelToken;
   String? _currentSectionId;
-  String? _currentCourseId;
   int _sectionsRequest = 0;
   int _lessonsRequest = 0;
   bool _disposed = false;
+  String? _currentCourseId;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -52,12 +52,11 @@ class InstructorLessonProvider extends ChangeNotifier {
     }
   }
 
-  Future<String?> createSection(Map<String, dynamic> body) {
-    final courseId = _currentCourseId;
-    if (courseId == null) {
-      return Future.value('Select a course before creating a section.');
-    }
-    return _runSectionMutation(() => _service.createSection(courseId, body));
+  Future<String?> createSection(String courseId, Map<String, dynamic> body) {
+    return _runSectionMutation(
+      () => _service.createSection(courseId, body),
+      courseId,
+    );
   }
 
   Future<String?> updateSection(
@@ -65,32 +64,43 @@ class InstructorLessonProvider extends ChangeNotifier {
     Map<String, dynamic> changedFields,
   ) {
     if (changedFields.isEmpty) return Future.value(null);
+    final courseId = _currentCourseId;
+    if (courseId == null) return Future.value('Course is unavailable.');
     return _runSectionMutation(
       () => _service.updateSection(sectionId, changedFields),
+      courseId,
     );
   }
 
-  Future<String?> setSectionPublished(CourseSection section, bool published) {
-    return updateSection(section.id, {'isPublished': published});
-  }
-
   Future<String?> reorderSection(String sectionId, int order) {
-    return _runSectionMutation(() => _service.reorderSection(sectionId, order));
+    final courseId = _currentCourseId;
+    if (courseId == null) return Future.value('Course is unavailable.');
+    return _runSectionMutation(
+      () => _service.reorderSection(sectionId, order),
+      courseId,
+    );
   }
 
   Future<String?> deleteSection(String sectionId) {
-    return _runSectionMutation(() => _service.deleteSection(sectionId));
+    final courseId = _currentCourseId;
+    if (courseId == null) return Future.value('Course is unavailable.');
+    return _runSectionMutation(
+      () => _service.deleteSection(sectionId),
+      courseId,
+    );
   }
 
-  Future<String?> _runSectionMutation(Future<void> Function() action) async {
+  Future<String?> _runSectionMutation(
+    Future<void> Function() action,
+    String courseId,
+  ) async {
     if (_disposed) return null;
     if (isBusy) return 'Please wait for the current action to finish.';
     isBusy = true;
     _notify();
     try {
       await action();
-      final courseId = _currentCourseId;
-      if (courseId != null && !_disposed) await loadSections(courseId);
+      if (!_disposed) await loadSections(courseId);
       return null;
     } on ApiException catch (error) {
       return error.message;

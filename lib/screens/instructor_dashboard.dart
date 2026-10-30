@@ -85,27 +85,22 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
           onRefresh: dashboard.load,
           bottomNavigationBar: NavigationBar(
             selectedIndex: 0,
-            onDestinationSelected: (index) {
-              if (index == 1) {
-                Navigator.pushNamed(context, AppRoutes.instructorCourses);
-              } else if (index == 2) {
-                Navigator.pushNamed(context, AppRoutes.profile);
-              }
-            },
             destinations: const [
               NavigationDestination(
                 icon: Icon(Icons.dashboard_outlined),
-                label: 'Dashboard',
+                selectedIcon: Icon(Icons.dashboard),
+                label: 'Home',
               ),
               NavigationDestination(
                 icon: Icon(Icons.menu_book_outlined),
-                label: 'My Courses',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.person_outline),
-                label: 'Profile',
+                label: 'My courses',
               ),
             ],
+            onDestinationSelected: (index) {
+              if (index == 1) {
+                Navigator.pushNamed(context, AppRoutes.instructorCourses);
+              }
+            },
           ),
           children: [
             GreetingHeader(
@@ -114,9 +109,11 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: () =>
-                  Navigator.pushNamed(context, AppRoutes.instructorCourses),
-              icon: const Icon(Icons.play_lesson_outlined),
+              onPressed: () => Navigator.pushNamed(
+                context,
+                AppRoutes.instructorCourses,
+              ),
+              icon: const Icon(Icons.menu_book_outlined),
               label: const Text('Manage my courses'),
             ),
             const SizedBox(height: 20),

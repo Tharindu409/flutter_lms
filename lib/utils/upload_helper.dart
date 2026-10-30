@@ -147,4 +147,21 @@ class UploadHelper {
       typeLabel: 'JPEG, PNG or WebP',
     );
   }
+
+  static Future<String?> validateImageFile(XFile file) async {
+    late final int size;
+    try {
+      size = await File(file.path).length();
+    } on FileSystemException {
+      return 'Unable to read the selected image. Please choose it again.';
+    }
+    if (size > maxImageBytes) {
+      return 'The file must be 5 MB or smaller.';
+    }
+    final mimeType = lookupMimeType(file.path) ?? '';
+    if (!imageTypes.contains(mimeType)) {
+      return 'Only JPEG, PNG or WebP files are allowed.';
+    }
+    return null;
+  }
 }

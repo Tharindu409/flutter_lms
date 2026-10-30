@@ -16,6 +16,7 @@ class CourseSection {
   });
 
   factory CourseSection.fromJson(Map<String, dynamic> json) {
+    final status = json['status']?.toString().toUpperCase();
     return CourseSection(
       id: (json['id'] ?? json['_id'] ?? '').toString(),
       title: (json['title'] ?? '').toString(),
@@ -24,7 +25,7 @@ class CourseSection {
       lessonCount: _lessonCount(json),
       isPublished: json['isPublished'] is bool
           ? json['isPublished'] as bool
-          : json['status']?.toString().toUpperCase() == 'DRAFT'
+          : status == 'DRAFT' || status == 'UNPUBLISHED'
           ? false
           : true,
     );

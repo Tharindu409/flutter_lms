@@ -31,9 +31,11 @@ import 'package:flutter_lms/screens/instructor_quiz_screens.dart';
 import 'package:flutter_lms/providers/instructor_quiz_provider.dart';
 import 'package:flutter_lms/services/instructor_quiz_service.dart';
 import 'package:flutter_lms/screens/instructor_assignment_screens.dart';
-import 'package:flutter_lms/screens/instructor_course_screens.dart';
 import 'package:flutter_lms/providers/instructor_assignment_provider.dart';
+import 'package:flutter_lms/providers/instructor_lesson_provider.dart';
 import 'package:flutter_lms/services/instructor_assignment_service.dart';
+import 'package:flutter_lms/screens/instructor_course_screens.dart';
+import 'package:flutter_lms/models/course.dart';
 import 'package:provider/provider.dart';
 
 class AppRoutes {
@@ -59,9 +61,12 @@ class AppRoutes {
   static const assignments = '/assignments';
   static const assignmentDetail = '/assignments/detail';
   static const instructorLessonCourses = '/instructor/lessons';
-  static const instructorCourses = '/instructor/courses';
   static const instructorQuizzes = '/instructor/course-quizzes';
   static const instructorAssignments = '/instructor/course-assignments';
+  static const instructorCourses = '/instructor/my-courses';
+  static const instructorCourseBuilder = '/instructor/course-builder';
+  static const instructorCourseForm = '/instructor/course-form';
+  static const instructorEnrollments = '/instructor/course-enrollments';
 
   static Map<String, WidgetBuilder> get routes => {
     splash: (_) => const SplashScreen(),
@@ -79,8 +84,8 @@ class AppRoutes {
     editProfile: (_) => const EditProfileScreen(),
     courses: (_) => const CoursesScreen(),
     notifications: (_) => const NotificationsScreen(),
-    instructorLessonCourses: (_) => const InstructorCoursesScreen(),
-    instructorCourses: (_) => const InstructorCoursesScreen(),
+    instructorLessonCourses: (_) => const InstructorMyCoursesScreen(),
+    instructorCourses: (_) => const InstructorMyCoursesScreen(),
     assignments: (context) => ChangeNotifierProvider<AssignmentProvider>(
       create: (_) {
         final apiClient = context.read<ApiClient>();
@@ -220,6 +225,50 @@ class AppRoutes {
               ),
               child: InstructorCourseAssignmentsScreen(
                 courseId: courseId,
+                courseTitle:
+                    _stringArgument(arguments, 'courseTitle') ?? 'Course',
+              ),
+            );
+          },
+        );
+      case instructorCourseBuilder:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (_) => ChangeNotifierProvider<InstructorLessonProvider>(
+            create: (context) => InstructorLessonProvider(
+              InstructorLessonService(context.read<ApiClient>()),
+            ),
+            child: InstructorCourseBuilderScreen(courseId: courseId),
+          ),
+        );
+      case instructorCourseForm:
+        final course = arguments is Map && arguments['course'] is Course
+            ? arguments['course'] as Course
+            : null;
+        return MaterialPageRoute<Course?>(
+          settings: settings,
+          builder: (_) => InstructorCourseFormScreen(course: course),
+        );
+      case instructorEnrollments:
+        final courseId = _stringArgument(arguments, 'courseId');
+        if (courseId == null) return _invalidRoute();
+        return MaterialPageRoute<void>(
+          settings: settings,
+          builder: (context) {
+            final apiClient = context.read<ApiClient>();
+            return ChangeNotifierProvider<InstructorAssignmentProvider>(
+              create: (_) =>
+                  InstructorAssignmentProvider(
+                    InstructorAssignmentService(apiClient),
+                    InstructorLessonService(apiClient),
+                  )..setCourse(
+                    courseId,
+                    title:
+                        _stringArgument(arguments, 'courseTitle') ?? 'Course',
+                  ),
+              child: InstructorCourseEnrollmentsScreen(
                 courseTitle:
                     _stringArgument(arguments, 'courseTitle') ?? 'Course',
               ),

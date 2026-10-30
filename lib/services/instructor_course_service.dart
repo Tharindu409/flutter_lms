@@ -93,7 +93,7 @@ class InstructorCourseService {
   Future<void> uploadThumbnail(
     String courseId,
     XFile file, {
-    ProgressCallback? onSendProgress,
+    required ProgressCallback onSendProgress,
   }) {
     return guardApi<void>(() async {
       final form = FormData.fromMap({
@@ -103,6 +103,7 @@ class InstructorCourseService {
         '/api/v1/courses/$courseId/thumbnail',
         data: form,
         onSendProgress: onSendProgress,
+        options: Options(sendTimeout: const Duration(minutes: 10)),
       );
     });
   }

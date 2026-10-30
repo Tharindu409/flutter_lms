@@ -115,6 +115,11 @@ class InstructorAssignmentProvider extends ChangeNotifier {
     selectedAssignment = assignment;
   }
 
+  void setCourse(String id, {required String title}) {
+    courseId = id;
+    courseTitle = title;
+  }
+
   Future<void> loadSubmissions(String assignmentId, {String? status}) async {
     selectedAssignmentId = assignmentId;
     if (status != null) submissionStatus = status;

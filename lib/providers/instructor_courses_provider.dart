@@ -12,12 +12,16 @@ class InstructorCoursesProvider extends ChangeNotifier {
   static const pageSize = 20;
 
   List<Course> courses = [];
+  Course? selectedCourse;
   String? status; // null shows every status
   String search = '';
 
   bool isLoading = false; // first page or refresh
   bool isLoadingMore = false;
   bool isBusy = false; // create, update, upload, publish or archive
+  double? uploadProgress;
+  bool isLoadingCourse = false;
+  String? courseError;
   String? errorMessage;
   String? loadMoreError;
   bool hasMore = false;
@@ -27,8 +31,8 @@ class InstructorCoursesProvider extends ChangeNotifier {
 
   int _page = 1;
   int _requestId = 0;
+  int _courseRequestId = 0;
   bool _disposed = false;
-  double? thumbnailUploadProgress;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -37,7 +41,6 @@ class InstructorCoursesProvider extends ChangeNotifier {
   Future<void> refresh() async {
     final request = ++_requestId;
     isLoading = true;
-    isLoadingMore = false;
     errorMessage = null;
     loadMoreError = null;
     _notify();
@@ -111,6 +114,26 @@ class InstructorCoursesProvider extends ChangeNotifier {
     return _service.getMyCourse(courseId);
   }
 
+  Future<void> loadCourse(String courseId) async {
+    final request = ++_courseRequestId;
+    isLoadingCourse = true;
+    courseError = null;
+    _notify();
+    try {
+      final result = await _service.getMyCourse(courseId);
+      if (_disposed || request != _courseRequestId) return;
+      selectedCourse = result;
+    } on ApiException catch (error) {
+      if (_disposed || request != _courseRequestId) return;
+      courseError = error.message;
+    } finally {
+      if (!_disposed && request == _courseRequestId) {
+        isLoadingCourse = false;
+        _notify();
+      }
+    }
+  }
+
   // Every action returns null on success, or an error message to show.
 
   Future<String?> createCourse(Map<String, dynamic> body) {
@@ -120,39 +143,35 @@ class InstructorCoursesProvider extends ChangeNotifier {
   }
 
   Future<String?> updateCourse(String courseId, Map<String, dynamic> body) {
-    return _runBusy(() => _service.updateCourse(courseId, body));
+    return _runBusy(() => _service.updateCourse(courseId, body))
+        .then((error) => _refreshSelectedCourse(courseId, error));
   }
 
   Future<String?> uploadThumbnail(String courseId, XFile file) {
-    thumbnailUploadProgress = 0;
-    _notify();
-    return _runBusy(
-      () => _service.uploadThumbnail(
-        courseId,
-        file,
-        onSendProgress: (sent, total) {
-          if (_disposed || total <= 0) return;
-          thumbnailUploadProgress = (sent / total).clamp(0, 1).toDouble();
-          _notify();
-        },
-      ),
-    ).whenComplete(() {
-      if (_disposed) return;
-      thumbnailUploadProgress = null;
-      _notify();
-    });
+    return _runBusy(() => _service.uploadThumbnail(
+      courseId,
+      file,
+      onSendProgress: (sent, total) {
+        if (_disposed || total <= 0) return;
+        uploadProgress = (sent / total).clamp(0, 1).toDouble();
+        _notify();
+      },
+    )).then((error) => _refreshSelectedCourse(courseId, error));
   }
 
   Future<String?> removeThumbnail(String courseId) {
-    return _runBusy(() => _service.removeThumbnail(courseId));
+    return _runBusy(() => _service.removeThumbnail(courseId))
+        .then((error) => _refreshSelectedCourse(courseId, error));
   }
 
   Future<String?> publishCourse(String courseId) {
-    return _runBusy(() => _service.publishCourse(courseId));
+    return _runBusy(() => _service.publishCourse(courseId))
+        .then((error) => _refreshSelectedCourse(courseId, error));
   }
 
   Future<String?> archiveCourse(String courseId) {
-    return _runBusy(() => _service.archiveCourse(courseId));
+    return _runBusy(() => _service.archiveCourse(courseId))
+        .then((error) => _refreshSelectedCourse(courseId, error));
   }
 
   Future<String?> _runBusy(Future<void> Function() action) async {
@@ -163,33 +182,55 @@ class InstructorCoursesProvider extends ChangeNotifier {
 
     try {
       await action();
-      if (!_disposed) await refresh();
-      return null;
     } on ApiException catch (error) {
+      final backendMessage = error.backendMessage?.trim();
+      if (error.statusCode == 403) {
+        return 'You do not have access to this course';
+      }
+      if (const [400, 409, 422].contains(error.statusCode) &&
+          backendMessage != null &&
+          backendMessage.isNotEmpty) {
+        return backendMessage;
+      }
       return error.message;
-    } catch (_) {
-      return 'Unable to complete this action. Please try again.';
     } finally {
       if (!_disposed) {
         isBusy = false;
+        uploadProgress = null;
         _notify();
       }
     }
+
+    if (_disposed) return null;
+    await refresh();
+    return null;
+  }
+
+  Future<String?> _refreshSelectedCourse(String courseId, String? error) async {
+    if (error != null || _disposed || selectedCourse?.id != courseId) {
+      return error;
+    }
+    await loadCourse(courseId);
+    return courseError;
   }
 
   void reset() {
     _requestId++;
+    _courseRequestId++;
     courses = [];
+    selectedCourse = null;
     status = null;
     search = '';
     isLoading = false;
     isLoadingMore = false;
     isBusy = false;
+    uploadProgress = null;
+    isLoadingCourse = false;
+    courseError = null;
     errorMessage = null;
     loadMoreError = null;
     hasMore = false;
     lastCreated = null;
-    thumbnailUploadProgress = null;
     _page = 1;
     _notify();
   }
@@ -198,6 +239,7 @@ class InstructorCoursesProvider extends ChangeNotifier {
   void dispose() {
     _disposed = true;
     _requestId++;
+    _courseRequestId++;
     super.dispose();
   }
 }

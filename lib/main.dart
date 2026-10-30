@@ -96,6 +96,7 @@ void main() {
           value: notificationProvider,
         ),
         Provider<InstructorCourseService>.value(value: instructorCourseService),
+        Provider<CourseService>.value(value: courseService),
         ChangeNotifierProvider<InstructorDashboardProvider>.value(
           value: instructorDashboardProvider,
         ),
