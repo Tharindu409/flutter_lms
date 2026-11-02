@@ -19,9 +19,7 @@ class AdminCategoriesProvider extends AdminPagedProvider<AdminCategory> {
       () => service.create({'name': name, 'description': description}),
     );
     selectedCategory = created;
-    items = [created, ...items];
-    total++;
-    notifySafely();
+    await applyFilters(Map<String, String>.of(filters));
   }
 
   Future<void> updateCategory(
@@ -51,5 +49,11 @@ class AdminCategoriesProvider extends AdminPagedProvider<AdminCategory> {
   void selectCategory(AdminCategory? value) {
     selectedCategory = value;
     notifySafely();
+  }
+
+  @override
+  void reset() {
+    selectedCategory = null;
+    super.reset();
   }
 }

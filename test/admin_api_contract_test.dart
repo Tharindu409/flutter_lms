@@ -6,6 +6,7 @@ import 'package:flutter_lms/core/constants/api_endpoints.dart';
 import 'package:flutter_lms/features/admin/categories/admin_categories_provider.dart';
 import 'package:flutter_lms/features/admin/categories/admin_categories_service.dart';
 import 'package:flutter_lms/features/admin/courses/admin_courses_service.dart';
+import 'package:flutter_lms/features/admin/core/admin_paged_data.dart';
 import 'package:flutter_lms/features/admin/dashboard/admin_dashboard_service.dart';
 import 'package:flutter_lms/features/admin/enrollments/admin_enrollments_service.dart';
 import 'package:flutter_lms/features/admin/models/admin_models.dart';
@@ -131,6 +132,17 @@ void main() {
     api.dio.close(force: true);
   });
 
+  test('category creation refreshes backend pagination metadata', () async {
+    final service = _CategoryRefreshService();
+    final provider = AdminCategoriesProvider(service);
+
+    await provider.createCategory('Created', 'Description');
+
+    expect(service.listCalls, 1);
+    expect(provider.total, 27);
+    provider.dispose();
+  });
+
   test('list requests omit unset optional filters', () async {
     final adapter = _AdminAdapter();
     final api = ApiClient(TokenStorage.memory())
@@ -158,6 +170,38 @@ void main() {
       expect(summary.completedEnrollments, isNull);
     },
   );
+}
+
+class _CategoryRefreshService extends AdminCategoriesService {
+  _CategoryRefreshService() : super(ApiClient(TokenStorage.memory()));
+
+  int listCalls = 0;
+
+  @override
+  Future<AdminCategory> create(Map<String, dynamic> body) async =>
+      const AdminCategory(
+        id: 'created-category',
+        name: 'Created',
+        description: 'Description',
+        slug: 'created',
+        isActive: true,
+      );
+
+  @override
+  Future<AdminPagedData<AdminCategory>> list({
+    int page = 1,
+    int limit = 20,
+    String search = '',
+  }) async {
+    listCalls++;
+    return const AdminPagedData(
+      items: [],
+      page: 1,
+      limit: 20,
+      total: 27,
+      totalPages: 2,
+    );
+  }
 }
 
 class _CapturedRequest {

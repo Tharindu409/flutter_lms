@@ -20,37 +20,51 @@ class ProfileProvider extends ChangeNotifier {
   InstructorProfile? instructorProfile;
 
   String _role = '';
+  int _requestGeneration = 0;
+  bool _disposed = false;
 
   Future<void> load(String role) async {
+    final request = ++_requestGeneration;
     _role = role;
     isLoading = true;
     errorMessage = null;
-    notifyListeners();
-
-    await _refresh();
-
-    isLoading = false;
-    notifyListeners();
+    _notify();
+    try {
+      await _refresh(request);
+    } finally {
+      if (_isCurrent(request)) {
+        isLoading = false;
+        _notify();
+      }
+    }
   }
 
-  Future<void> _refresh() async {
+  Future<void> _refresh(int request) async {
     try {
       final fetched = await _service.getMyUser();
+      if (!_isCurrent(request)) return;
       user = fetched.role.isEmpty ? fetched.withRole(_role) : fetched;
       errorMessage = null;
     } on ApiException catch (error) {
+      if (!_isCurrent(request)) return;
       errorMessage = error.message;
       return;
     }
 
+    if (!_isCurrent(request)) return;
     profileNotice = null;
     try {
       if (_role == 'STUDENT') {
-        studentProfile = await _service.getStudentProfile();
+        final profile = await _service.getStudentProfile();
+        if (!_isCurrent(request)) return;
+        studentProfile = profile;
       } else if (_role == 'INSTRUCTOR') {
-        instructorProfile = await _service.getInstructorProfile();
+        final profile = await _service.getInstructorProfile();
+        if (!_isCurrent(request)) return;
+        instructorProfile = profile;
       }
     } on ApiException catch (error) {
+      if (!_isCurrent(request)) return;
       profileNotice = error.message;
     }
   }
@@ -77,23 +91,29 @@ class ProfileProvider extends ChangeNotifier {
   }
 
   Future<String?> _runBusy(Future<void> Function() action) async {
+    final request = ++_requestGeneration;
+    isLoading = false;
     isBusy = true;
-    notifyListeners();
+    _notify();
 
     try {
       await action();
-      await _refresh();
+      if (!_isCurrent(request)) return null;
+      await _refresh(request);
       return null;
     } on ApiException catch (error) {
-      return error.message;
+      return _isCurrent(request) ? error.message : null;
     } finally {
-      isBusy = false;
-      notifyListeners();
+      if (_isCurrent(request)) {
+        isBusy = false;
+        _notify();
+      }
     }
   }
 
   /// Clears cached data so the next user never sees the previous profile.
   void reset() {
+    _requestGeneration++;
     user = null;
     studentProfile = null;
     instructorProfile = null;
@@ -102,6 +122,19 @@ class ProfileProvider extends ChangeNotifier {
     isLoading = false;
     isBusy = false;
     _role = '';
-    notifyListeners();
+    _notify();
+  }
+
+  bool _isCurrent(int request) => !_disposed && request == _requestGeneration;
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    _requestGeneration++;
+    super.dispose();
   }
 }

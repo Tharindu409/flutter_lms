@@ -36,6 +36,55 @@ class _AdminShellState extends State<AdminShell> {
   int _returnIndex = 0;
   late String _activeMoreSection = widget.moreInitialSection;
   String? _pendingCourseId;
+  bool _providersInitialized = false;
+  late AuthProvider _authProvider;
+  late AdminDashboardProvider _dashboardProvider;
+  late AdminUsersProvider _usersProvider;
+  late AdminCategoriesProvider _categoriesProvider;
+  late AdminCoursesProvider _coursesProvider;
+  late AdminEnrollmentsProvider _enrollmentsProvider;
+  late AdminReviewsProvider _reviewsProvider;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_providersInitialized) return;
+    final api = context.read<ApiClient>();
+    _authProvider = context.read<AuthProvider>();
+    _dashboardProvider = AdminDashboardProvider(AdminDashboardService(api));
+    _usersProvider = AdminUsersProvider(AdminUsersService(api));
+    _categoriesProvider = AdminCategoriesProvider(AdminCategoriesService(api));
+    _coursesProvider = AdminCoursesProvider(AdminCoursesService(api));
+    _enrollmentsProvider = AdminEnrollmentsProvider(
+      AdminEnrollmentsService(api),
+    );
+    _reviewsProvider = AdminReviewsProvider(AdminReviewsService(api));
+    _authProvider.addSessionResetCallback(_resetAdminProviders);
+    _providersInitialized = true;
+  }
+
+  void _resetAdminProviders() {
+    _dashboardProvider.reset();
+    _usersProvider.reset();
+    _categoriesProvider.reset();
+    _coursesProvider.reset();
+    _enrollmentsProvider.reset();
+    _reviewsProvider.reset();
+  }
+
+  @override
+  void dispose() {
+    if (_providersInitialized) {
+      _authProvider.removeSessionResetCallback(_resetAdminProviders);
+      _dashboardProvider.dispose();
+      _usersProvider.dispose();
+      _categoriesProvider.dispose();
+      _coursesProvider.dispose();
+      _enrollmentsProvider.dispose();
+      _reviewsProvider.dispose();
+    }
+    super.dispose();
+  }
 
   void _openEnrollments(String courseId) {
     setState(() {
@@ -64,26 +113,23 @@ class _AdminShellState extends State<AdminShell> {
 
   @override
   Widget build(BuildContext context) {
-    final api = context.read<ApiClient>();
     return MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => AdminDashboardProvider(AdminDashboardService(api)),
+        ChangeNotifierProvider<AdminDashboardProvider>.value(
+          value: _dashboardProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => AdminUsersProvider(AdminUsersService(api)),
+        ChangeNotifierProvider<AdminUsersProvider>.value(value: _usersProvider),
+        ChangeNotifierProvider<AdminCategoriesProvider>.value(
+          value: _categoriesProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => AdminCategoriesProvider(AdminCategoriesService(api)),
+        ChangeNotifierProvider<AdminCoursesProvider>.value(
+          value: _coursesProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => AdminCoursesProvider(AdminCoursesService(api)),
+        ChangeNotifierProvider<AdminEnrollmentsProvider>.value(
+          value: _enrollmentsProvider,
         ),
-        ChangeNotifierProvider(
-          create: (_) => AdminEnrollmentsProvider(AdminEnrollmentsService(api)),
-        ),
-        ChangeNotifierProvider(
-          create: (_) => AdminReviewsProvider(AdminReviewsService(api)),
+        ChangeNotifierProvider<AdminReviewsProvider>.value(
+          value: _reviewsProvider,
         ),
       ],
       child: Builder(

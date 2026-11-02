@@ -61,4 +61,11 @@ class AdminReviewsProvider extends AdminPagedProvider<AdminReview> {
     if (hidden.isNotEmpty) items = [...items, ...hidden];
     notifySafely();
   }
+
+  @override
+  void reset() {
+    _hiddenForSession.clear();
+    selectedReview = null;
+    super.reset();
+  }
 }

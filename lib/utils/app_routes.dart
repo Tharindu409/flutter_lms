@@ -67,10 +67,6 @@ class AppRoutes {
   static const instructorCourseBuilder = '/instructor/course-builder';
   static const instructorCourseForm = '/instructor/course-form';
   static const instructorEnrollments = '/instructor/course-enrollments';
-  static const studentQuizzes = '/quizzes';
-  static const studentQuizDetail = '/quizzes/detail';
-  static const studentEnroll = '/courses/enroll';
-  static const instructorSubmissions = '/instructor/submissions';
   static const adminUsers = '/admin/users';
   static const adminCourses = '/admin/courses';
   static const adminCategories = '/admin/categories';
@@ -137,13 +133,10 @@ class AppRoutes {
       case courses:
       case courseDetail:
       case myCourses:
-      case studentEnroll:
       case curriculum:
       case lesson:
       case assignments:
       case assignmentDetail:
-      case studentQuizzes:
-      case studentQuizDetail:
         return 'STUDENT';
       case instructorDashboard:
       case instructorLessonCourses:
@@ -153,7 +146,6 @@ class AppRoutes {
       case instructorEnrollments:
       case instructorQuizzes:
       case instructorAssignments:
-      case instructorSubmissions:
         return 'INSTRUCTOR';
       case adminDashboard:
       case adminUsers:

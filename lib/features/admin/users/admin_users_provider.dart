@@ -46,4 +46,10 @@ class AdminUsersProvider extends AdminPagedProvider<AdminUser> {
     selectedUser = value;
     notifySafely();
   }
+
+  @override
+  void reset() {
+    selectedUser = null;
+    super.reset();
+  }
 }

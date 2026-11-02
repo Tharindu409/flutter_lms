@@ -47,4 +47,10 @@ class AdminCoursesProvider extends AdminPagedProvider<AdminCourse> {
     if (selectedCourse?.id == course.id) selectedCourse = archived;
     notifySafely();
   }
+
+  @override
+  void reset() {
+    selectedCourse = null;
+    super.reset();
+  }
 }

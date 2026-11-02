@@ -30,4 +30,10 @@ class AdminEnrollmentsProvider extends AdminPagedProvider<AdminEnrollment> {
     selectedEnrollment = value;
     notifySafely();
   }
+
+  @override
+  void reset() {
+    selectedEnrollment = null;
+    super.reset();
+  }
 }

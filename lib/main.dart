@@ -29,7 +29,6 @@ void main() {
     onSessionExpired: () {
       final wasLoggedIn = authProvider.isLoggedIn;
       authProvider.handleSessionExpired();
-      profileProvider.reset();
       if (wasLoggedIn) {
         navigatorKey.currentState?.pushNamedAndRemoveUntil(
           AppRoutes.login,
@@ -40,7 +39,6 @@ void main() {
   );
   final authService = AuthService(apiClient, tokenStorage);
   final profileService = ProfileService(apiClient);
-  authProvider = AuthProvider(authService);
   profileProvider = ProfileProvider(profileService);
 
   final courseService = CourseService(apiClient);
@@ -62,15 +60,21 @@ void main() {
     instructorCourseService,
   );
 
-  authProvider.addListener(() {
-    final isLoggedIn = authProvider.isLoggedIn;
-    if (!isLoggedIn) {
+  authProvider = AuthProvider(
+    authService,
+    onSessionCleared: () {
+      profileProvider.reset();
       catalogProvider.reset();
       myCoursesProvider.reset();
       notificationProvider.reset();
       instructorDashboardProvider.reset();
       instructorCoursesProvider.reset();
-    } else if (!wasLoggedIn) {
+    },
+  );
+
+  authProvider.addListener(() {
+    final isLoggedIn = authProvider.isLoggedIn;
+    if (isLoggedIn && !wasLoggedIn) {
       notificationProvider.refreshUnreadCount();
     }
     wasLoggedIn = isLoggedIn;

@@ -4,9 +4,11 @@ import 'package:flutter_lms/services/auth_service.dart';
 import 'package:flutter_lms/utils/api_exception.dart';
 
 class AuthProvider extends ChangeNotifier {
-  AuthProvider(this._authService);
+  AuthProvider(this._authService, {this._onSessionCleared});
 
   final AuthService _authService;
+  final void Function()? _onSessionCleared;
+  final Set<void Function()> _sessionResetCallbacks = {};
 
   bool isLoading = false;
   String? errorMessage;
@@ -79,9 +81,21 @@ class AuthProvider extends ChangeNotifier {
   /// Called when token refresh fails while the app is in use.
   void handleSessionExpired() => _clear();
 
+  void addSessionResetCallback(void Function() callback) {
+    _sessionResetCallbacks.add(callback);
+  }
+
+  void removeSessionResetCallback(void Function() callback) {
+    _sessionResetCallbacks.remove(callback);
+  }
+
   void _clear() {
     user = null;
     errorMessage = null;
+    _onSessionCleared?.call();
+    for (final callback in List<void Function()>.of(_sessionResetCallbacks)) {
+      callback();
+    }
     notifyListeners();
   }
 }
