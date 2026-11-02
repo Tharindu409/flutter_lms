@@ -59,19 +59,21 @@ class AuthProvider extends ChangeNotifier {
   }
 
   Future<void> logout() async {
-    await _authService.logout();
-    _clear();
+    try {
+      await _authService.logout();
+    } finally {
+      _clear();
+    }
   }
 
   /// Returns null on success, or an error message to show.
   Future<String?> logoutAll() async {
     try {
       await _authService.logoutAll();
+    } finally {
       _clear();
-      return null;
-    } on ApiException catch (error) {
-      return error.message;
     }
+    return null;
   }
 
   /// Called when token refresh fails while the app is in use.

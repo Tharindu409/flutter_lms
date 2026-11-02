@@ -22,10 +22,7 @@ class AuthService {
 
   // ---------------------------------------------------------------- login
 
-  Future<AuthSession> login({
-    required String email,
-    required String password,
-  }) {
+  Future<AuthSession> login({required String email, required String password}) {
     return guardApi(() async {
       final response = await _dio.post<dynamic>(
         '/api/v1/auth/login',
@@ -61,13 +58,16 @@ class AuthService {
     }
   }
 
-  /// Revokes every session of this account. Local data is cleared only when
-  /// the backend confirms it, so the user is never told it worked when it didn't.
-  Future<void> logoutAll() {
-    return guardApi<void>(() async {
+  /// Attempts to revoke every session; local sign-out always completes even
+  /// when the role is not permitted to use the server-side logout-all route.
+  Future<void> logoutAll() async {
+    try {
       await _dio.post<dynamic>('/api/v1/auth/logout-all');
+    } on DioException {
+      // Local logout must still complete when this endpoint rejects the role.
+    } finally {
       await _tokenStorage.clear();
-    });
+    }
   }
 
   // ------------------------------------------------------- session restore
@@ -78,9 +78,7 @@ class AuthService {
     if (!await _tokenStorage.hasSession()) return null;
 
     try {
-      final response = await _dio.get<dynamic>(
-        '/api/v1/users/me/full-profile',
-      );
+      final response = await _dio.get<dynamic>('/api/v1/users/me/full-profile');
 
       final data = JsonUtils.asMap(ApiResponse.data(response));
       if (data == null) return null;
