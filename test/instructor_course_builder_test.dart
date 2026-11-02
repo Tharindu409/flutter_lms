@@ -7,10 +7,28 @@ import 'package:flutter_lms/services/api_client.dart';
 import 'package:flutter_lms/services/instructor_course_service.dart';
 import 'package:flutter_lms/services/instructor_lesson_service.dart';
 import 'package:flutter_lms/services/token_storage.dart';
+import 'package:flutter_lms/utils/api_exception.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 
 void main() {
+  test('maps course ownership failures to a friendly message', () async {
+    final client = ApiClient(TokenStorage.memory())
+      ..dio.httpClientAdapter = _ForbiddenAdapter();
+    final service = InstructorCourseService(client);
+
+    await expectLater(
+      service.getMyCourses(),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'message',
+          'You do not have access to this course',
+        ),
+      ),
+    );
+  });
+
   test('uses the course and section builder endpoint contracts', () async {
     final adapter = _BuilderAdapter();
     final client = ApiClient(TokenStorage.memory())
@@ -47,10 +65,12 @@ void main() {
     addTearDown(() async {
       if (await image.exists()) await image.delete();
     });
+    final thumbnailCancelToken = CancelToken();
     await courseService.uploadThumbnail(
       'course-response-id',
       XFile(image.path),
       onSendProgress: (_, _) {},
+      cancelToken: thumbnailCancelToken,
     );
     await courseService.removeThumbnail('course-response-id');
     await courseService.publishCourse('course-response-id');
@@ -95,6 +115,7 @@ void main() {
     });
     expect(adapter.requests[4].body, {'shortDescription': 'Changed only'});
     expect(adapter.requests[5].multipartFieldNames, contains('thumbnail'));
+    expect(adapter.requests[5].cancelToken, same(thumbnailCancelToken));
     expect(
       adapter.requests[5].contentType,
       matches(RegExp(r'multipart/form-data; boundary=.+')),
@@ -112,6 +133,7 @@ class _CapturedRequest {
     required this.query,
     required this.multipartFieldNames,
     required this.contentType,
+    required this.cancelToken,
   });
 
   final String method;
@@ -120,6 +142,7 @@ class _CapturedRequest {
   final Map<String, dynamic> query;
   final List<String> multipartFieldNames;
   final String? contentType;
+  final CancelToken? cancelToken;
 }
 
 class _BuilderAdapter implements HttpClientAdapter {
@@ -167,11 +190,32 @@ class _BuilderAdapter implements HttpClientAdapter {
         multipartFieldNames:
             form?.files.map((entry) => entry.key).toList() ?? const [],
         contentType: options.headers[Headers.contentTypeHeader]?.toString(),
+        cancelToken: options.cancelToken,
       ),
     );
     return ResponseBody.fromString(
       jsonEncode({'data': response}),
       200,
+      headers: {
+        Headers.contentTypeHeader: [Headers.jsonContentType],
+      },
+    );
+  }
+
+  @override
+  void close({bool force = false}) {}
+}
+
+class _ForbiddenAdapter implements HttpClientAdapter {
+  @override
+  Future<ResponseBody> fetch(
+    RequestOptions options,
+    Stream<Uint8List>? requestStream,
+    Future<void>? cancelFuture,
+  ) async {
+    return ResponseBody.fromString(
+      '{"message":"Forbidden"}',
+      403,
       headers: {
         Headers.contentTypeHeader: [Headers.jsonContentType],
       },

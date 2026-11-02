@@ -27,7 +27,7 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
   List<DashboardStat> _stats(InstructorSummary s) => [
     DashboardStat(
       label: 'Total courses',
-      value: '${s.totalCourses}',
+      value: s.totalCourses?.toString() ?? '--',
       icon: Icons.menu_book_outlined,
       color: Colors.indigo,
     ),
@@ -71,6 +71,12 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
 
   @override
   Widget build(BuildContext context) {
+    if (context.watch<AuthProvider>().role != 'INSTRUCTOR') {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Instructor Dashboard')),
+        body: const Center(child: Text('You do not have access to this page')),
+      );
+    }
     final name = context.watch<AuthProvider>().user?.firstName;
 
     return Consumer<InstructorDashboardProvider>(
@@ -83,25 +89,6 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
         return DashboardScaffold(
           title: 'Instructor Dashboard',
           onRefresh: dashboard.load,
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: 0,
-            destinations: const [
-              NavigationDestination(
-                icon: Icon(Icons.dashboard_outlined),
-                selectedIcon: Icon(Icons.dashboard),
-                label: 'Home',
-              ),
-              NavigationDestination(
-                icon: Icon(Icons.menu_book_outlined),
-                label: 'My courses',
-              ),
-            ],
-            onDestinationSelected: (index) {
-              if (index == 1) {
-                Navigator.pushNamed(context, AppRoutes.instructorCourses);
-              }
-            },
-          ),
           children: [
             GreetingHeader(
               greeting: 'Hello, ${name ?? 'Instructor'}',
@@ -109,10 +96,8 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
             ),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: () => Navigator.pushNamed(
-                context,
-                AppRoutes.instructorCourses,
-              ),
+              onPressed: () =>
+                  Navigator.pushNamed(context, AppRoutes.instructorCourses),
               icon: const Icon(Icons.menu_book_outlined),
               label: const Text('Manage my courses'),
             ),
@@ -129,13 +114,10 @@ class _InstructorDashboardState extends State<InstructorDashboard> {
                 child: LoadingView(message: 'Loading dashboard...'),
               )
             else
-              SizedBox(
-                height: 200,
-                child: ErrorView(
-                  message:
-                      dashboard.errorMessage ?? 'Could not load the dashboard.',
-                  onRetry: dashboard.load,
-                ),
+              ErrorView(
+                message:
+                    dashboard.errorMessage ?? 'Could not load the dashboard.',
+                onRetry: dashboard.load,
               ),
           ],
         );

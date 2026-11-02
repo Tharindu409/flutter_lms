@@ -1,5 +1,5 @@
 class InstructorSummary {
-  final int totalCourses;
+  final int? totalCourses;
   final int publishedCourses;
   final int draftCourses;
   final int archivedCourses;
@@ -22,17 +22,11 @@ class InstructorSummary {
   factory InstructorSummary.fromJson(Map<String, dynamic> json) {
     int count(List<String> keys) => _find(json, keys)?.toInt() ?? 0;
 
-    final published = count(['publishedCourses']);
-    final draft = count(['draftCourses']);
-    final archived = count(['archivedCourses']);
-
     return InstructorSummary(
-      totalCourses:
-          _find(json, ['totalCourses'])?.toInt() ??
-          published + draft + archived,
-      publishedCourses: published,
-      draftCourses: draft,
-      archivedCourses: archived,
+      totalCourses: _find(json, ['totalCourses'])?.toInt(),
+      publishedCourses: count(['publishedCourses']),
+      draftCourses: count(['draftCourses']),
+      archivedCourses: count(['archivedCourses']),
       totalEnrollments: count([
         'totalEnrollments',
         'activeEnrollments',

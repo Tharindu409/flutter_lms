@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_lms/models/course.dart';
 import 'package:flutter_lms/services/instructor_course_service.dart';
@@ -33,6 +34,7 @@ class InstructorCoursesProvider extends ChangeNotifier {
   int _requestId = 0;
   int _courseRequestId = 0;
   bool _disposed = false;
+  CancelToken? _thumbnailCancelToken;
 
   void _notify() {
     if (!_disposed) notifyListeners();
@@ -147,16 +149,35 @@ class InstructorCoursesProvider extends ChangeNotifier {
         .then((error) => _refreshSelectedCourse(courseId, error));
   }
 
-  Future<String?> uploadThumbnail(String courseId, XFile file) {
-    return _runBusy(() => _service.uploadThumbnail(
-      courseId,
-      file,
-      onSendProgress: (sent, total) {
-        if (_disposed || total <= 0) return;
-        uploadProgress = (sent / total).clamp(0, 1).toDouble();
-        _notify();
-      },
-    )).then((error) => _refreshSelectedCourse(courseId, error));
+  Future<String?> uploadThumbnail(String courseId, XFile file) async {
+    if (_disposed) return null;
+    if (isBusy) return 'Please wait for the current action to finish.';
+    final cancelToken = CancelToken();
+    _thumbnailCancelToken = cancelToken;
+    uploadProgress = 0;
+    _notify();
+
+    final error = await _runBusy(
+      () => _service.uploadThumbnail(
+        courseId,
+        file,
+        cancelToken: cancelToken,
+        onSendProgress: (sent, total) {
+          if (_disposed || total <= 0) return;
+          uploadProgress = (sent / total).clamp(0, 1).toDouble();
+          _notify();
+        },
+      ),
+    );
+    if (!_disposed && identical(_thumbnailCancelToken, cancelToken)) {
+      _thumbnailCancelToken = null;
+    }
+    if (cancelToken.isCancelled) return 'Thumbnail upload cancelled.';
+    return _refreshSelectedCourse(courseId, error);
+  }
+
+  void cancelThumbnailUpload() {
+    _thumbnailCancelToken?.cancel();
   }
 
   Future<String?> removeThumbnail(String courseId) {
@@ -240,6 +261,7 @@ class InstructorCoursesProvider extends ChangeNotifier {
     _disposed = true;
     _requestId++;
     _courseRequestId++;
+    _thumbnailCancelToken?.cancel();
     super.dispose();
   }
 }

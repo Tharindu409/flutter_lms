@@ -688,6 +688,12 @@ class _InstructorCourseBuilderScreenState
                 icon: const Icon(Icons.assignment_outlined),
               ),
               IconButton(
+                tooltip: 'Submissions',
+                onPressed: () =>
+                    _openRoute(AppRoutes.instructorAssignments, course),
+                icon: const Icon(Icons.fact_check_outlined),
+              ),
+              IconButton(
                 tooltip: 'Enrollments',
                 onPressed: () =>
                     _openRoute(AppRoutes.instructorEnrollments, course),
@@ -878,8 +884,21 @@ class _CourseThumbnailPanel extends StatelessWidget {
                 if (provider.uploadProgress != null) ...[
                   LinearProgressIndicator(value: provider.uploadProgress),
                   const SizedBox(height: 6),
-                  Text(
-                    'Uploading thumbnail ${(provider.uploadProgress! * 100).round()}%',
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Uploading thumbnail ${(provider.uploadProgress! * 100).round()}%',
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: provider.isBusy
+                            ? provider.cancelThumbnailUpload
+                            : null,
+                        icon: const Icon(Icons.close),
+                        label: const Text('Cancel'),
+                      ),
+                    ],
                   ),
                 ],
                 Wrap(

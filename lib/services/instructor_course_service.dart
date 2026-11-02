@@ -24,7 +24,7 @@ class InstructorCourseService {
   );
 
   Future<InstructorSummary> getDashboard() {
-    return guardApi(() async {
+    return _run(() async {
       final response = await _dio.get<dynamic>('/api/v1/dashboard/instructor');
       final json = JsonUtils.asMap(ApiResponse.data(response));
       if (json == null) throw _unexpected;
@@ -39,7 +39,7 @@ class InstructorCourseService {
     String? status,
     String? search,
   }) {
-    return guardApi(() async {
+    return _run(() async {
       final response = await _dio.get<dynamic>(
         '/api/v1/courses/instructor/me',
         queryParameters: {
@@ -60,7 +60,7 @@ class InstructorCourseService {
   }
 
   Future<Course> getMyCourse(String courseId) {
-    return guardApi(() async {
+    return _run(() async {
       final response = await _dio.get<dynamic>(
         '/api/v1/courses/instructor/me/$courseId',
       );
@@ -74,7 +74,7 @@ class InstructorCourseService {
   /// requirements[], learningOutcomes[], targetAudience[].
   /// The new course starts as DRAFT.
   Future<Course> createCourse(Map<String, dynamic> body) {
-    return guardApi(() async {
+    return _run(() async {
       final response = await _dio.post<dynamic>('/api/v1/courses', data: body);
       final json = JsonUtils.unwrap(ApiResponse.data(response), ['course']);
       if (json == null) throw _unexpected;
@@ -84,7 +84,7 @@ class InstructorCourseService {
 
   /// Partial update. Archived courses cannot be edited.
   Future<void> updateCourse(String courseId, Map<String, dynamic> body) {
-    return guardApi<void>(() async {
+    return _run<void>(() async {
       await _dio.patch<dynamic>('/api/v1/courses/$courseId', data: body);
     });
   }
@@ -94,14 +94,16 @@ class InstructorCourseService {
     String courseId,
     XFile file, {
     required ProgressCallback onSendProgress,
+    required CancelToken cancelToken,
   }) {
-    return guardApi<void>(() async {
+    return _run<void>(() async {
       final form = FormData.fromMap({
         'thumbnail': await UploadHelper.imagePart(file),
       });
       await _dio.post<dynamic>(
         '/api/v1/courses/$courseId/thumbnail',
         data: form,
+        cancelToken: cancelToken,
         onSendProgress: onSendProgress,
         options: Options(sendTimeout: const Duration(minutes: 10)),
       );
@@ -109,7 +111,7 @@ class InstructorCourseService {
   }
 
   Future<void> removeThumbnail(String courseId) {
-    return guardApi<void>(() async {
+    return _run<void>(() async {
       await _dio.delete<dynamic>('/api/v1/courses/$courseId/thumbnail');
     });
   }
@@ -117,15 +119,29 @@ class InstructorCourseService {
   /// A DRAFT course needs at least one published section with a published
   /// lesson. If not, the backend message explains what is missing.
   Future<void> publishCourse(String courseId) {
-    return guardApi<void>(() async {
+    return _run<void>(() async {
       await _dio.patch<dynamic>('/api/v1/courses/$courseId/publish');
     });
   }
 
   /// Keeps content and enrollments but stops new enrollments.
   Future<void> archiveCourse(String courseId) {
-    return guardApi<void>(() async {
+    return _run<void>(() async {
       await _dio.patch<dynamic>('/api/v1/courses/$courseId/archive');
     });
+  }
+
+  Future<T> _run<T>(Future<T> Function() action) async {
+    try {
+      return await guardApi<T>(action);
+    } on ApiException catch (error) {
+      if (error.statusCode == 403) {
+        throw ApiException(
+          statusCode: error.statusCode,
+          message: 'You do not have access to this course',
+        );
+      }
+      rethrow;
+    }
   }
 }
