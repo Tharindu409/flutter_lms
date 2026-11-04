@@ -33,8 +33,9 @@ class AuthInterceptor extends Interceptor {
         options.path == '/api/v1/auth/logout' ||
         options.path == '/api/v1/auth/logout-all';
     final isPublicCatalog =
-        options.path == '/api/v1/categories' ||
-        options.path == '/api/v1/courses';
+        options.method == 'GET' &&
+        (options.path == '/api/v1/categories' ||
+            options.path == '/api/v1/courses');
     if (!needsAuth || isPublicCatalog) {
       options.headers.remove('Authorization');
       handler.next(options);

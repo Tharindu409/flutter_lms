@@ -66,9 +66,15 @@ class _AssignmentAdapter implements HttpClientAdapter {
         'url': 'https://test.local/brief.pdf',
       },
     };
+    final courseAssignment = Map<String, dynamic>.from(assignment)
+      ..remove('id');
     final data = options.path.endsWith('/assignments')
         ? {
-            'assignments': [assignment],
+            'data': {
+              'assignments': [
+                {...courseAssignment, '_id': 'assignment-from-response'},
+              ],
+            },
           }
         : {'assignment': assignment};
     return ResponseBody.fromString(

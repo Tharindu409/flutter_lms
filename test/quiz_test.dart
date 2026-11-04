@@ -36,15 +36,17 @@ class _QuizAdapter implements HttpClientAdapter {
     return ResponseBody.fromString(
       jsonEncode({
         'data': {
-          'quizzes': [
-            {
-              'id': 'quiz-response-id',
-              'title': 'Dart basics',
-              'passingScore': 70,
-              'timeLimitMinutes': 15,
-              'maxAttempts': 3,
-            },
-          ],
+          'data': {
+            'quizzes': [
+              {
+                '_id': 'quiz-response-id',
+                'title': 'Dart basics',
+                'passingScore': 70,
+                'timeLimitMinutes': 15,
+                'maxAttempts': 3,
+              },
+            ],
+          },
         },
       }),
       200,

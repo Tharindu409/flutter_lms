@@ -34,7 +34,11 @@ class InstructorAssignmentService {
     return _run(() async {
       final response = await _dio.get<dynamic>(
         '/api/v1/courses/$courseId/enrollments',
-        queryParameters: {'page': page, 'limit': limit, 'status': status},
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (status.trim().isNotEmpty) 'status': status,
+        },
       );
       final result = PagedResult.fromData(
         ApiResponse.data(response),
@@ -59,7 +63,11 @@ class InstructorAssignmentService {
     return _run(() async {
       final response = await _dio.get<dynamic>(
         '/api/v1/assignments/$assignmentId/submissions',
-        queryParameters: {'page': page, 'limit': limit, 'status': status},
+        queryParameters: {
+          'page': page,
+          'limit': limit,
+          if (status.trim().isNotEmpty) 'status': status,
+        },
       );
       final result = PagedResult.fromData(
         ApiResponse.data(response),

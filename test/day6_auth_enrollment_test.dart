@@ -50,9 +50,43 @@ void main() {
     );
 
     await dio.get<dynamic>('/api/v1/categories');
+    await dio.get<dynamic>('/api/v1/courses');
 
-    expect(adapter.authorization, isNull);
+    expect(adapter.authorizationHeaders, [null, null]);
   });
+
+  test(
+    'course creation keeps authentication and retries with refreshed token',
+    () async {
+      final storage = TokenStorage.memory();
+      await storage.saveSession(
+        accessToken: 'expired-access',
+        refreshToken: 'old-refresh',
+        role: 'INSTRUCTOR',
+      );
+      final protectedAdapter = _ProtectedAdapter();
+      final refreshAdapter = _RefreshAdapter();
+      final dio = Dio(BaseOptions(baseUrl: 'http://test.local'))
+        ..httpClientAdapter = protectedAdapter;
+      dio.interceptors.add(
+        AuthInterceptor(
+          dio: dio,
+          tokenStorage: storage,
+          refreshDioFactory: (options) =>
+              Dio(options)..httpClientAdapter = refreshAdapter,
+        ),
+      );
+
+      await dio.post<dynamic>('/api/v1/courses', data: {'title': 'Course'});
+
+      expect(protectedAdapter.authorizationHeaders, [
+        _authorization('expired-access'),
+        _authorization('fresh-access'),
+      ]);
+      expect(protectedAdapter.requestCount, 2);
+      expect(await storage.readAccessToken(), 'fresh-access');
+    },
+  );
 
   test('enrollment errors map to safe user-facing messages', () {
     expect(
@@ -158,7 +192,7 @@ class _RefreshAdapter implements HttpClientAdapter {
 }
 
 class _PublicAdapter implements HttpClientAdapter {
-  String? authorization;
+  final List<String?> authorizationHeaders = [];
 
   @override
   Future<ResponseBody> fetch(
@@ -166,7 +200,7 @@ class _PublicAdapter implements HttpClientAdapter {
     Stream<Uint8List>? requestStream,
     Future<void>? cancelFuture,
   ) async {
-    authorization = options.headers['Authorization'] as String?;
+    authorizationHeaders.add(options.headers['Authorization'] as String?);
     return _response({'data': []});
   }
 

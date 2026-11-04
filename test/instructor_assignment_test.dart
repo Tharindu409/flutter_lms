@@ -50,12 +50,14 @@ void main() {
       await service.deleteAttachment('assignment-response-id');
       await service.publishAssignment('assignment-response-id');
       await service.deleteAssignment('assignment-response-id');
+      await service.getSubmissions('assignment-response-id');
       final submissions = await service.getSubmissions(
         'assignment-response-id',
         page: 2,
         limit: 20,
         status: 'GRADED',
       );
+      await service.getCourseEnrollments('course-response-id');
       final enrollments = await service.getCourseEnrollments(
         'course-response-id',
         status: 'ACTIVE',
@@ -77,6 +79,8 @@ void main() {
           'PATCH /api/v1/assignments/assignment-response-id/publish',
           'DELETE /api/v1/assignments/assignment-response-id',
           'GET /api/v1/assignments/assignment-response-id/submissions',
+          'GET /api/v1/assignments/assignment-response-id/submissions',
+          'GET /api/v1/courses/course-response-id/enrollments',
           'GET /api/v1/courses/course-response-id/enrollments',
           'PATCH /api/v1/submissions/submission-response-id/grade',
         ],
@@ -93,12 +97,14 @@ void main() {
       );
       expect(adapter.requests[3].sendTimeout, const Duration(minutes: 10));
       expect(adapter.requests[5].body, isEmpty);
-      expect(adapter.requests[7].query, {
+      expect(adapter.requests[7].query, {'page': 1, 'limit': 20});
+      expect(adapter.requests[8].query, {
         'page': 2,
         'limit': 20,
         'status': 'GRADED',
       });
-      expect(adapter.requests[8].query, {
+      expect(adapter.requests[9].query, {'page': 1, 'limit': 20});
+      expect(adapter.requests[10].query, {
         'page': 1,
         'limit': 20,
         'status': 'ACTIVE',
@@ -107,6 +113,9 @@ void main() {
       expect(submissions.items.single.status, 'SUBMITTED');
       expect(submissions.items.single.textAnswer, 'My answer');
       expect(enrollments.items.single.progressPercentage, '63.5');
+      expect(enrollments.items.single.id, 'enrollment-response-id');
+      expect(enrollments.items.single.studentName, 'Sam Student');
+      expect(enrollments.totalPages, 3);
     },
   );
 
@@ -260,15 +269,17 @@ class _AssignmentAdapter implements HttpClientAdapter {
       };
     } else if (options.path.endsWith('/enrollments')) {
       dataResponse = {
-        'enrollments': [
-          {
-            'id': 'enrollment-response-id',
-            'student': {'firstName': 'Sam', 'lastName': 'Student'},
-            'status': 'ACTIVE',
-            'progressPercentage': 63.5,
-          },
-        ],
-        'pagination': {'page': 1, 'limit': 20, 'totalPages': 1},
+        'data': {
+          'enrollments': [
+            {
+              '_id': 'enrollment-response-id',
+              'student': {'fullName': 'Sam Student'},
+              'status': 'ACTIVE',
+              'progressPercentage': 63.5,
+            },
+          ],
+          'pagination': {'page': 1, 'limit': 20, 'totalPages': 3},
+        },
       };
     }
 
