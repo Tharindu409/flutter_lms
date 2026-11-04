@@ -25,7 +25,7 @@ class AdminUsersProvider extends AdminPagedProvider<AdminUser> {
 
   Future<AdminUser> loadDetails(String userId) async {
     try {
-      selectedUser = await runAction(() => service.details(userId));
+      selectedUser = await service.details(userId);
       notifySafely();
       return selectedUser!;
     } on ApiException {
