@@ -38,92 +38,14 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
   }
 
   Future<void> _edit([AdminCategory? category]) async {
-    final name = TextEditingController(text: category?.name ?? '');
-    final description = TextEditingController(
-      text: category?.description ?? '',
-    );
-    final formKey = GlobalKey<FormState>();
     final provider = context.read<AdminCategoriesProvider>();
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) =>
-          ChangeNotifierProvider<AdminCategoriesProvider>.value(
-            value: provider,
-            child: Consumer<AdminCategoriesProvider>(
-              builder: (dialogContext, currentProvider, _) => AlertDialog(
-                title: Text(
-                  category == null ? 'Create category' : 'Edit category',
-                ),
-                content: Form(
-                  key: formKey,
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        TextFormField(
-                          controller: name,
-                          decoration: const InputDecoration(labelText: 'Name'),
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                              ? 'Name is required'
-                              : null,
-                        ),
-                        TextFormField(
-                          controller: description,
-                          decoration: const InputDecoration(
-                            labelText: 'Description',
-                          ),
-                          maxLines: 3,
-                          validator: (value) =>
-                              value == null || value.trim().isEmpty
-                              ? 'Description is required'
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(dialogContext),
-                    child: const Text('Cancel'),
-                  ),
-                  FilledButton(
-                    onPressed: currentProvider.isSubmitting
-                        ? null
-                        : () async {
-                            if (!(formKey.currentState?.validate() ?? false)) {
-                              return;
-                            }
-                            try {
-                              if (category == null) {
-                                await provider.createCategory(
-                                  name.text.trim(),
-                                  description.text.trim(),
-                                );
-                              } else {
-                                await provider.updateCategory(
-                                  category,
-                                  name: name.text.trim(),
-                                  description: description.text.trim(),
-                                );
-                              }
-                              if (dialogContext.mounted) {
-                                Navigator.pop(dialogContext);
-                              }
-                            } on ApiException catch (error) {
-                              _message(error.message);
-                            }
-                          },
-                    child: const Text('Save'),
-                  ),
-                ],
-              ),
-            ),
-          ),
+      builder: (_) => ChangeNotifierProvider<AdminCategoriesProvider>.value(
+        value: provider,
+        child: _AdminCategoryDialog(category: category, onError: _message),
+      ),
     );
-    name.dispose();
-    description.dispose();
   }
 
   Future<void> _toggle(AdminCategory category) async {
@@ -226,4 +148,104 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       ),
     );
   }
+}
+
+class _AdminCategoryDialog extends StatefulWidget {
+  const _AdminCategoryDialog({required this.category, required this.onError});
+
+  final AdminCategory? category;
+  final ValueChanged<String> onError;
+
+  @override
+  State<_AdminCategoryDialog> createState() => _AdminCategoryDialogState();
+}
+
+class _AdminCategoryDialogState extends State<_AdminCategoryDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _name;
+  late final TextEditingController _description;
+
+  @override
+  void initState() {
+    super.initState();
+    _name = TextEditingController(text: widget.category?.name ?? '');
+    _description = TextEditingController(
+      text: widget.category?.description ?? '',
+    );
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _description.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final provider = context.read<AdminCategoriesProvider>();
+    try {
+      final category = widget.category;
+      if (category == null) {
+        await provider.createCategory(
+          _name.text.trim(),
+          _description.text.trim(),
+        );
+      } else {
+        await provider.updateCategory(
+          category,
+          name: _name.text.trim(),
+          description: _description.text.trim(),
+        );
+      }
+      if (mounted) Navigator.pop(context);
+    } on ApiException catch (error) {
+      widget.onError(error.message);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Consumer<AdminCategoriesProvider>(
+    builder: (context, provider, _) => AlertDialog(
+      title: Text(
+        widget.category == null ? 'Create category' : 'Edit category',
+      ),
+      content: Form(
+        key: _formKey,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: _name,
+                decoration: const InputDecoration(labelText: 'Name'),
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Name is required'
+                    : null,
+              ),
+              TextFormField(
+                controller: _description,
+                decoration: const InputDecoration(labelText: 'Description'),
+                maxLines: 3,
+                validator: (value) => value == null || value.trim().isEmpty
+                    ? 'Description is required'
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: provider.isSubmitting ? null : _save,
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
 }

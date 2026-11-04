@@ -396,7 +396,14 @@ class _InstructorCourseFormScreenState
         _categoryId ??= _categories.isEmpty ? null : _categories.first.id;
       });
     } on ApiException catch (error) {
-      if (mounted) setState(() => _categoriesError = error.message);
+      if (mounted) {
+        setState(
+          () =>
+              _categoriesError = error.backendMessage?.trim().isNotEmpty == true
+              ? error.backendMessage!.trim()
+              : error.message,
+        );
+      }
     } finally {
       if (mounted) setState(() => _loadingCategories = false);
     }
@@ -416,9 +423,9 @@ class _InstructorCourseFormScreenState
             'description': _descriptionController.text.trim(),
             'level': _level,
             'language': _languageController.text.trim(),
-            'requirements': _requirements.values,
-            'learningOutcomes': _outcomes.values,
-            'targetAudience': _audience.values,
+            'requirements': _requirements.submittedValues,
+            'learningOutcomes': _outcomes.submittedValues,
+            'targetAudience': _audience.submittedValues,
           };
     if (_editing && body.isEmpty) {
       Navigator.pop(context, widget.course);
@@ -451,8 +458,8 @@ class _InstructorCourseFormScreenState
       body['shortDescription'] = shortDescription;
     }
     if (_level != original.level) body['level'] = _level;
-    if (!_sameList(_outcomes.values, original.learningOutcomes)) {
-      body['learningOutcomes'] = _outcomes.values;
+    if (!_sameList(_outcomes.submittedValues, original.learningOutcomes)) {
+      body['learningOutcomes'] = _outcomes.submittedValues;
     }
     return body;
   }
@@ -512,6 +519,17 @@ class _InstructorCourseFormScreenState
                 controller: _titleController,
                 enabled: enabled,
                 decoration: const InputDecoration(labelText: 'Title *'),
+                validator: _required,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _shortDescriptionController,
+                enabled: enabled,
+                minLines: 2,
+                maxLines: 4,
+                decoration: const InputDecoration(
+                  labelText: 'Short description *',
+                ),
                 validator: _required,
               ),
               const SizedBox(height: 12),
@@ -1310,6 +1328,22 @@ class _SectionFormDialogState extends State<_SectionFormDialog> {
 class _StringListInputController extends ChangeNotifier {
   _StringListInputController(Iterable<String> initial) : values = [...initial];
   final List<String> values;
+  String _draft = '';
+
+  List<String> get submittedValues {
+    final result = [...values];
+    for (final item in _draft.split(',')) {
+      final normalized = item.trim();
+      if (normalized.isNotEmpty && !result.contains(normalized)) {
+        result.add(normalized);
+      }
+    }
+    return result;
+  }
+
+  void setDraft(String value) {
+    _draft = value;
+  }
 
   void add(String value) {
     final normalized = value.trim();
@@ -1373,6 +1407,7 @@ class _StringListInputState extends State<_StringListInput> {
     for (final value in _textController.text.split(',')) {
       widget.controller.add(value);
     }
+    widget.controller.setDraft('');
     _textController.clear();
   }
 
@@ -1392,6 +1427,7 @@ class _StringListInputState extends State<_StringListInput> {
             icon: const Icon(Icons.add),
           ),
         ),
+        onChanged: widget.controller.setDraft,
         onFieldSubmitted: (_) => _add(),
       ),
       if (widget.controller.values.isNotEmpty)

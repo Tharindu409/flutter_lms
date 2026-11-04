@@ -153,11 +153,17 @@ class _AdminShellState extends State<AdminShell> {
                 outline: const Color(0xFFD1D5DB),
                 outlineVariant: const Color(0xFFE5E7EB),
               ),
-              scaffoldBackgroundColor: Colors.white,
+              scaffoldBackgroundColor: const Color(0xFFF5F7FB),
               appBarTheme: Theme.of(context).appBarTheme.copyWith(
                 backgroundColor: Colors.white,
                 foregroundColor: const Color(0xFF111827),
                 surfaceTintColor: Colors.transparent,
+                elevation: 0,
+                titleTextStyle: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  color: const Color(0xFF111827),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               textTheme: Theme.of(context).textTheme.copyWith(
                 headlineSmall: Theme.of(context).textTheme.headlineSmall
@@ -175,6 +181,7 @@ class _AdminShellState extends State<AdminShell> {
               ),
               inputDecorationTheme: Theme.of(context).inputDecorationTheme
                   .copyWith(
+                    filled: true,
                     fillColor: const Color(0xFFF9FAFB),
                     prefixIconColor: const Color(0xFF6B7280),
                     suffixIconColor: const Color(0xFF6B7280),
@@ -183,13 +190,29 @@ class _AdminShellState extends State<AdminShell> {
                       color: Color(0xFF2563EB),
                       fontWeight: FontWeight.w600,
                     ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(
+                        color: Color(0xFF2563EB),
+                        width: 1.5,
+                      ),
+                    ),
                   ),
               cardTheme: CardThemeData(
                 color: Colors.white,
-                elevation: 0,
+                elevation: 1,
+                shadowColor: const Color(0xFF0F172A).withValues(alpha: 0.06),
                 margin: EdgeInsets.zero,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(18),
                   side: const BorderSide(color: Color(0xFFE5E7EB)),
                 ),
               ),

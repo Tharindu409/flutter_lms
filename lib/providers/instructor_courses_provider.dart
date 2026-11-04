@@ -208,12 +208,14 @@ class InstructorCoursesProvider extends ChangeNotifier {
       if (error.statusCode == 403) {
         return 'You do not have access to this course';
       }
-      if (const [400, 409, 422].contains(error.statusCode) &&
-          backendMessage != null &&
-          backendMessage.isNotEmpty) {
-        return backendMessage;
+      final message = backendMessage == null || backendMessage.isEmpty
+          ? error.message
+          : backendMessage;
+      final details = _formatErrorDetails(error.details);
+      if (details.isNotEmpty) {
+        return '$message: $details';
       }
-      return error.message;
+      return message;
     } finally {
       if (!_disposed) {
         isBusy = false;
@@ -225,6 +227,18 @@ class InstructorCoursesProvider extends ChangeNotifier {
     if (_disposed) return null;
     await refresh();
     return null;
+  }
+
+  String _formatErrorDetails(dynamic details) {
+    if (details is Map) {
+      return details.entries
+          .map((entry) => '${entry.key}: ${_formatErrorDetails(entry.value)}')
+          .join('; ');
+    }
+    if (details is List) {
+      return details.map(_formatErrorDetails).join('; ');
+    }
+    return details?.toString() ?? '';
   }
 
   Future<String?> _refreshSelectedCourse(String courseId, String? error) async {

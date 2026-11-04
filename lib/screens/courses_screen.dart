@@ -211,9 +211,21 @@ class _CoursesScreenState extends State<CoursesScreen> {
     }
 
     if (catalog.errorMessage != null && catalog.courses.isEmpty) {
-      return ErrorView(
-        message: catalog.errorMessage!,
-        onRetry: catalog.refresh,
+      return RefreshIndicator(
+        onRefresh: catalog.refresh,
+        child: ListView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: 320,
+              child: ErrorView(
+                message: catalog.errorMessage!,
+                onRetry: catalog.refresh,
+              ),
+            ),
+          ],
+        ),
       );
     }
 
@@ -223,12 +235,26 @@ class _CoursesScreenState extends State<CoursesScreen> {
           catalog.selectedCategoryId != null ||
           catalog.selectedLevel != null ||
           catalog.selectedLanguage != null;
-      return EmptyView(
-        icon: Icons.search_off,
-        title: filtered ? 'No courses match your filters' : 'No courses yet',
-        message: filtered
-            ? 'Try a different search or clear the filters.'
-            : 'Check back later for new courses.',
+      return RefreshIndicator(
+        onRefresh: catalog.refresh,
+        child: ListView(
+          controller: _scrollController,
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: 320,
+              child: EmptyView(
+                icon: Icons.search_off,
+                title: filtered
+                    ? 'No courses match your filters'
+                    : 'No courses yet',
+                message: filtered
+                    ? 'Try a different search or clear the filters.'
+                    : 'Check back later for new courses.',
+              ),
+            ),
+          ],
+        ),
       );
     }
 

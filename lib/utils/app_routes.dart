@@ -173,8 +173,11 @@ class AppRoutes {
     String? routeName,
     Widget Function() build,
   ) {
-    if (!isRoleAllowed(routeName, context.read<AuthProvider>().role)) {
-      return _accessDenied();
+    final role = context.read<AuthProvider>().role;
+    if (!isRoleAllowed(routeName, role)) {
+      return _RoleRedirectScreen(
+        destination: homeForRole(role) ?? login,
+      );
     }
     return build();
   }
@@ -369,16 +372,6 @@ class AppRoutes {
     );
   }
 
-  static Widget _accessDenied() => Scaffold(
-    appBar: AppBar(title: const Text('Access denied')),
-    body: const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Text('You do not have access to this page'),
-      ),
-    ),
-  );
-
   static Route<dynamic> _invalidRoute() {
     return MaterialPageRoute<void>(
       builder: (context) => Scaffold(
@@ -403,4 +396,32 @@ class AppRoutes {
         return null;
     }
   }
+}
+
+class _RoleRedirectScreen extends StatefulWidget {
+  const _RoleRedirectScreen({required this.destination});
+
+  final String destination;
+
+  @override
+  State<_RoleRedirectScreen> createState() => _RoleRedirectScreenState();
+}
+
+class _RoleRedirectScreenState extends State<_RoleRedirectScreen> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        widget.destination,
+        (_) => false,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+    body: Center(child: CircularProgressIndicator()),
+  );
 }

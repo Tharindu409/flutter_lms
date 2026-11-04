@@ -132,37 +132,87 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             onRefresh: () => provider.load(refresh: true),
             child: ListView(
               physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               children: [
                 Container(
-                  padding: const EdgeInsets.all(22),
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(26),
+                    borderRadius: BorderRadius.circular(24),
                     gradient: const LinearGradient(
-                      colors: [Color(0xFF1D4ED8), Color(0xFF3B82F6)],
+                      colors: [Color(0xFF1E40AF), Color(0xFF3B82F6)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Stack(
                     children: [
-                      const Icon(
-                        Icons.insights_rounded,
-                        color: Colors.white,
-                        size: 28,
+                      Positioned(
+                        top: -54,
+                        right: -28,
+                        child: Container(
+                          width: 156,
+                          height: 156,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 20),
-                      Text(
-                        'Platform overview',
-                        style: Theme.of(context).textTheme.titleLarge
-                            ?.copyWith(color: Colors.white, fontSize: 22),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'A snapshot of activity across your learning platform.',
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.88),
+                      Padding(
+                        padding: const EdgeInsets.all(22),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 11,
+                                vertical: 7,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.16),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.insights_rounded,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  SizedBox(width: 7),
+                                  Text(
+                                    'ADMIN OVERVIEW',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 11,
+                                      letterSpacing: 0.8,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            Text(
+                              'Platform at a glance',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    color: Colors.white,
+                                    fontSize: 23,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'A snapshot of activity across your learning platform.',
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: Colors.white.withValues(alpha: 0.88),
+                                    height: 1.4,
+                                  ),
+                            ),
+                          ],
                         ),
                       ),
                     ],

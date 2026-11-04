@@ -316,9 +316,20 @@ class _MyCoursesScreenState extends State<MyCoursesScreen> {
       return const LoadingView(message: 'Loading your courses...');
     }
     if (provider.errorMessage != null && provider.enrollments.isEmpty) {
-      return ErrorView(
-        message: provider.errorMessage!,
-        onRetry: provider.refresh,
+      return RefreshIndicator(
+        onRefresh: provider.refresh,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          children: [
+            SizedBox(
+              height: MediaQuery.sizeOf(context).height * 0.55,
+              child: ErrorView(
+                message: provider.errorMessage!,
+                onRetry: provider.refresh,
+              ),
+            ),
+          ],
+        ),
       );
     }
     if (provider.enrollments.isEmpty) {
