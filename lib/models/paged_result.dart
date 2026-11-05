@@ -25,6 +25,8 @@ class PagedResult<T> {
     'categories',
     'lessons',
     'sections',
+    'quizzes',
+    'assignments',
     'results',
     'docs',
     'data',
@@ -44,11 +46,8 @@ class PagedResult<T> {
     if (data is List) {
       rawItems = data;
     } else if (data is Map<String, dynamic>) {
-      rawItems = _findList(data);
-      meta =
-          JsonUtils.asMap(data['pagination']) ??
-          JsonUtils.asMap(data['meta']) ??
-          data;
+      rawItems = _findList(data) ?? const [];
+      meta = _findMeta(data) ?? data;
     }
 
     final items = rawItems
@@ -74,15 +73,34 @@ class PagedResult<T> {
     );
   }
 
-  static List<dynamic> _findList(Map<String, dynamic> data) {
+  static List<dynamic>? _findList(Map<String, dynamic> data) {
     for (final key in _listKeys) {
       final value = data[key];
       if (value is List) return value;
     }
     for (final value in data.values) {
+      if (value is Map<String, dynamic>) {
+        final nested = _findList(value);
+        if (nested != null) return nested;
+      }
+    }
+    for (final value in data.values) {
       if (value is List) return value;
     }
-    return const [];
+    return null;
+  }
+
+  static Map<String, dynamic>? _findMeta(Map<String, dynamic> data) {
+    final meta =
+        JsonUtils.asMap(data['pagination']) ?? JsonUtils.asMap(data['meta']);
+    if (meta != null) return meta;
+    for (final value in data.values) {
+      if (value is Map<String, dynamic>) {
+        final nested = _findMeta(value);
+        if (nested != null) return nested;
+      }
+    }
+    return null;
   }
 
   static int? _toInt(dynamic value) => int.tryParse(value?.toString() ?? '');

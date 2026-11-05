@@ -182,9 +182,12 @@ class InstructorEnrollment {
     final studentMap = student is Map ? student : const {};
     final first = studentMap['firstName']?.toString() ?? '';
     final last = studentMap['lastName']?.toString() ?? '';
+    final fullName = studentMap['fullName'] ?? studentMap['name'];
     return InstructorEnrollment(
       id: (json['id'] ?? json['_id'] ?? json['enrollmentId'] ?? '').toString(),
-      studentName: _nullable(json['studentName'] ?? '$first $last'.trim()),
+      studentName: _nullable(
+        json['studentName'] ?? fullName ?? '$first $last'.trim(),
+      ),
       status: _nullable(json['status']),
       progressPercentage: json['progressPercentage']?.toString(),
       enrolledAt: _nullable(json['enrolledAt'] ?? json['createdAt']),

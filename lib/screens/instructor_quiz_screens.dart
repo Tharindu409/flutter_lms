@@ -117,6 +117,9 @@ class _InstructorCourseQuizzesScreenState
                       quiz: provider.quizzes[index],
                       onOpen: () => _openQuiz(provider.quizzes[index]),
                       onDelete: () => _deleteQuiz(provider.quizzes[index]),
+                      onPublish: provider.isBusy
+                          ? null
+                          : () => _publishQuiz(provider.quizzes[index]),
                     ),
                   ),
                 ),
@@ -174,6 +177,27 @@ class _InstructorCourseQuizzesScreenState
     if (error != null && mounted) _showMessage(error);
   }
 
+  Future<void> _publishQuiz(Quiz quiz) async {
+    final confirmed = await showConfirmDialog(
+      context,
+      title: 'Publish quiz?',
+      message: 'Students will be able to access this quiz. Make sure it has questions and its section is published.',
+      confirmLabel: 'Publish',
+    );
+    if (!mounted || !confirmed) return;
+
+    final provider = context.read<InstructorQuizProvider>();
+    final error = await provider.publishQuiz(quiz.id);
+    if (!mounted) return;
+    if (error != null) {
+      _showMessage(error);
+      return;
+    }
+
+    await context.read<InstructorDashboardProvider>().load();
+    if (mounted) _showMessage('Quiz published.');
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
@@ -186,72 +210,90 @@ class _QuizCard extends StatelessWidget {
     required this.quiz,
     required this.onOpen,
     required this.onDelete,
+    required this.onPublish,
   });
 
   final Quiz quiz;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
+  final VoidCallback? onPublish;
 
   @override
   Widget build(BuildContext context) {
     final published = quiz.isPublished;
     return Card(
       clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
-          child: Row(
-            children: [
-              const CircleAvatar(
-                backgroundColor: Color(0xFFEDE8FF),
-                child: Icon(Icons.quiz_outlined, color: AppTheme.primary),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      quiz.title,
-                      style: Theme.of(context).textTheme.titleMedium,
-                    ),
-                    const SizedBox(height: 4),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 4,
-                      children: [
-                        _StatusChip(
-                          label: published == null
-                              ? 'Status unavailable'
-                              : published
-                              ? 'Published'
-                              : 'Draft',
-                          published: published == true,
-                        ),
-                        Text(
-                          quiz.questionCount == null
-                              ? 'Question count unavailable'
-                              : '${quiz.questionCount} questions',
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      ],
-                    ),
-                  ],
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 8, 12),
+        child: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Color(0xFFEDE8FF),
+              child: Icon(Icons.quiz_outlined, color: AppTheme.primary),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: InkWell(
+                onTap: onOpen,
+                borderRadius: BorderRadius.circular(12),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        quiz.title,
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 4),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 4,
+                        children: [
+                          _StatusChip(
+                            label: published == null
+                                ? 'Status unavailable'
+                                : published
+                                ? 'Published'
+                                : 'Draft',
+                            published: published == true,
+                          ),
+                          Text(
+                            quiz.questionCount == null
+                                ? 'Question count unavailable'
+                                : '${quiz.questionCount} questions',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'open') onOpen();
-                  if (value == 'delete') onDelete();
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'open', child: Text('Manage')),
-                  const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                ],
+            ),
+            if (published != true)
+              TextButton.icon(
+                onPressed: onPublish,
+                icon: const Icon(Icons.publish_outlined, size: 18),
+                label: const Text('Publish'),
               ),
-            ],
-          ),
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'open') onOpen();
+                if (value == 'publish') onPublish?.call();
+                if (value == 'delete') onDelete();
+              },
+              itemBuilder: (_) => [
+                const PopupMenuItem(value: 'open', child: Text('Manage')),
+                if (published != true)
+                  const PopupMenuItem(
+                    value: 'publish',
+                    child: Text('Publish quiz'),
+                  ),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
+            ),
+          ],
         ),
       ),
     );

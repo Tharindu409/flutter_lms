@@ -430,17 +430,8 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _load());
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<QuizProvider>().load(widget.courseId);
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) {
-        context.read<AssignmentProvider>().loadCourse(
-          widget.courseId,
-          title: widget.title,
-        );
-      }
+      if (mounted) _refresh();
     });
   }
 
@@ -449,6 +440,16 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
     title: widget.title,
     enrollmentId: widget.enrollmentId,
   );
+
+  Future<void> _refresh() {
+    final quizProvider = context.read<QuizProvider>();
+    final assignmentProvider = context.read<AssignmentProvider>();
+    return Future.wait([
+      _load(),
+      quizProvider.load(widget.courseId),
+      assignmentProvider.loadCourse(widget.courseId, title: widget.title),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -463,7 +464,7 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
             return ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ErrorView(message: provider.errorMessage!, onRetry: _load),
+                ErrorView(message: provider.errorMessage!, onRetry: _refresh),
                 const SizedBox(height: 24),
                 const SectionHeader(
                   title: 'Quizzes',
@@ -486,7 +487,7 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
           }
           if (provider.sections.isEmpty) {
             return RefreshIndicator(
-              onRefresh: _load,
+              onRefresh: _refresh,
               child: ListView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(16),
@@ -519,7 +520,7 @@ class _CurriculumScreenState extends State<CurriculumScreen> {
             );
           }
           return RefreshIndicator(
-            onRefresh: _load,
+            onRefresh: _refresh,
             child: ListView(
               padding: const EdgeInsets.all(16),
               children: [
